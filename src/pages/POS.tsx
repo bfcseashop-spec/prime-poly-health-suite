@@ -36,6 +36,7 @@ const PAYMENTS = [
   { value: "acleda", label: "ACLEDA Bank" },
   { value: "paypal", label: "PayPal" },
   { value: "visa", label: "Card", icon: CreditCard },
+  { value: "due", label: "Due (Unpaid)", icon: Clock },
 ];
 
 const CAT_META: Record<string, { label: string; icon: any; color: string }> = {
