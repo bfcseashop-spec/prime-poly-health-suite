@@ -25,17 +25,34 @@ import {
 } from "lucide-react";
 
 const POSITIONS = [
-  { value: "doctor", label: "Doctor", icon: Stethoscope, color: "bg-primary/10 text-primary border-primary/30" },
-  { value: "lab_technician", label: "Lab Technician", icon: FlaskConical, color: "bg-purple-500/10 text-purple-600 border-purple-500/30" },
-  { value: "nurse", label: "Nurse", icon: Users, color: "bg-pink-500/10 text-pink-600 border-pink-500/30" },
-  { value: "pharmacist", label: "Pharmacist", icon: Briefcase, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
-  { value: "receptionist", label: "Receptionist", icon: Users, color: "bg-blue-500/10 text-blue-600 border-blue-500/30" },
-  { value: "accountant", label: "Accountant", icon: Wallet, color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
-  { value: "radiologist", label: "Radiologist", icon: Briefcase, color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/30" },
-  { value: "cleaner", label: "Cleaner / Support", icon: Users, color: "bg-slate-500/10 text-slate-600 border-slate-500/30" },
+  { value: "doctor", label: "Doctor", icon: Stethoscope, color: "bg-violet-50 text-violet-700 border-violet-200" },
+  { value: "lab_technician", label: "Lab Technologist", icon: FlaskConical, color: "bg-slate-100 text-slate-700 border-slate-200" },
+  { value: "nurse", label: "Nurse", icon: Users, color: "bg-pink-50 text-pink-700 border-pink-200" },
+  { value: "pharmacist", label: "Pharmacist", icon: Briefcase, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { value: "receptionist", label: "Receptionist", icon: Users, color: "bg-teal-50 text-teal-700 border-teal-200" },
+  { value: "accountant", label: "Accountant", icon: Wallet, color: "bg-amber-50 text-amber-700 border-amber-200" },
+  { value: "radiologist", label: "Radiologist", icon: Briefcase, color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  { value: "manager", label: "Manager", icon: Briefcase, color: "bg-stone-100 text-stone-700 border-stone-200" },
+  { value: "super_admin", label: "Super Admin", icon: Briefcase, color: "bg-gray-100 text-gray-700 border-gray-300" },
+  { value: "admin", label: "Admin", icon: Briefcase, color: "bg-violet-100 text-violet-700 border-violet-200" },
+  { value: "cleaner", label: "Cleaner / Support", icon: Users, color: "bg-slate-100 text-slate-600 border-slate-200" },
 ];
 
 const posMeta = (p: string) => POSITIONS.find(x => x.value === p) ?? { label: p, icon: Users, color: "bg-muted text-foreground border-border" };
+
+// Deterministic colored avatar fallback (like the reference image)
+const AVATAR_PALETTE = [
+  "bg-violet-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500",
+  "bg-blue-500", "bg-teal-500", "bg-indigo-500", "bg-pink-500",
+  "bg-orange-500", "bg-cyan-500", "bg-fuchsia-500", "bg-lime-600",
+];
+const avatarColor = (name: string) => {
+  let h = 0;
+  for (let i = 0; i < (name || "").length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
+};
+const initials = (name: string) =>
+  (name || "?").trim().split(/\s+/).map(s => s[0]).slice(0, 2).join("").toUpperCase();
 
 const emptyForm = {
   id: "" as string | "",
