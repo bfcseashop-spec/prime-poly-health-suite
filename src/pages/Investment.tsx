@@ -279,7 +279,25 @@ export default function Investment() {
     toast.success("Contribution removed"); setDeleteCId(null); load();
   };
 
-  // ===== Export CSV =====
+  // ===== Category CRUD =====
+  const openNewCat = () => { setCatForm({ id: "", name: "", color: COLOR_PRESETS[0].value }); };
+  const openEditCat = (c: any) => { setCatForm({ id: c.id, name: c.name, color: c.color || COLOR_PRESETS[0].value }); };
+  const saveCat = async () => {
+    if (!catForm.name.trim()) return toast.error("Name is required");
+    const payload = { name: catForm.name.trim(), color: catForm.color };
+    let error;
+    if (catForm.id) ({ error } = await (supabase.from("investment_categories" as any) as any).update(payload).eq("id", catForm.id));
+    else ({ error } = await (supabase.from("investment_categories" as any) as any).insert(payload));
+    if (error) return toast.error(error.message);
+    toast.success(catForm.id ? "Category updated" : "Category added");
+    openNewCat(); load();
+  };
+  const confirmDeleteCat = async () => {
+    if (!deleteCatId) return;
+    const { error } = await (supabase.from("investment_categories" as any) as any).delete().eq("id", deleteCatId);
+    if (error) return toast.error(error.message);
+    toast.success("Category removed"); setDeleteCatId(null); load();
+  };
   const exportCSV = () => {
     const rows = [["Date","Investment","Investor","Category","Amount","Method","Reference","Note"]];
     filteredContrib.forEach(c => {
