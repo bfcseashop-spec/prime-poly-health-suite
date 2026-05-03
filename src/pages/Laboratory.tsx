@@ -309,26 +309,37 @@ export default function Laboratory() {
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader><TableRow>
-                  <TableHead>Order</TableHead><TableHead>Date</TableHead><TableHead>Patient</TableHead>
-                  <TableHead>Tests</TableHead><TableHead>Sample</TableHead><TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead><TableHead></TableHead>
+                <TableHeader><TableRow className="bg-muted/40">
+                  <TableHead>Order</TableHead><TableHead>Date</TableHead>
+                  <TableHead>Patient ID</TableHead><TableHead>Patient Name</TableHead>
+                  <TableHead className="text-center">Age</TableHead><TableHead>Gender</TableHead>
+                  <TableHead className="text-center">Tests</TableHead>
+                  <TableHead>Sample</TableHead><TableHead>Status</TableHead>
+                  <TableHead className="text-right">Price</TableHead><TableHead className="text-right">Actions</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {filteredOrders.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-12">No orders</TableCell></TableRow> :
+                  {filteredOrders.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-12">No orders</TableCell></TableRow> :
                     filteredOrders.map(o => {
                       const p = patients[o.patient_id];
                       const its = orderItems[o.id] ?? [];
+                      const age = ageOf(p?.dob);
                       return (
-                        <TableRow key={o.id} className="cursor-pointer hover:bg-accent/40" onClick={() => openOrderDetail(o)}>
-                          <TableCell className="font-mono text-sm">{o.order_no}</TableCell>
-                          <TableCell className="text-sm">{new Date(o.created_at).toLocaleDateString()}</TableCell>
-                          <TableCell className="text-sm">{p ? `${p.patient_code} — ${p.full_name}` : "—"}</TableCell>
-                          <TableCell className="text-sm"><Badge variant="secondary">{its.length} tests</Badge></TableCell>
+                        <TableRow key={o.id} className="cursor-pointer hover:bg-accent/30" onClick={() => openOrderDetail(o)}>
+                          <TableCell className="font-mono text-xs">{o.order_no}</TableCell>
+                          <TableCell className="text-xs">{new Date(o.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell><Badge variant="outline" className="font-mono text-xs">{p?.patient_code ?? "—"}</Badge></TableCell>
+                          <TableCell className="text-sm font-medium">{p?.full_name ?? <span className="text-muted-foreground">Walk-in</span>}</TableCell>
+                          <TableCell className="text-center text-sm">{age ?? "—"}</TableCell>
+                          <TableCell className="text-sm capitalize">{p?.gender ?? "—"}</TableCell>
+                          <TableCell className="text-center"><Badge variant="secondary">{its.length}</Badge></TableCell>
                           <TableCell><SampleBadge s={o.sample_status} /></TableCell>
                           <TableCell><StatusBadge s={o.status} /></TableCell>
-                          <TableCell className="text-right font-medium">{fmtUSD(Number(o.total_usd))}</TableCell>
-                          <TableCell><Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); openOrderDetail(o); }}>View</Button></TableCell>
+                          <TableCell className="text-right font-semibold text-primary">{fmtUSD(Number(o.total_usd))}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="icon" variant="ghost" title="View" onClick={e => { e.stopPropagation(); openOrderDetail(o); }}><Eye className="h-4 w-4" /></Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
