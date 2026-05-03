@@ -120,8 +120,14 @@ export default function POS() {
 
   const subtotal = useMemo(() => cart.reduce((s, c) => s + c.price_usd * c.quantity, 0), [cart]);
   const insuranceDiscount = insuranceCard ? +(subtotal * (Number(insuranceCard.discount_percent) / 100)).toFixed(2) : 0;
-  const total = Math.max(0, subtotal - discount - insuranceDiscount);
-  const totalPaid = useMemo(() => splits.reduce((s, p) => s + (Number(p.amount) || 0), 0), [splits]);
+  const discount = useMemo(() => {
+    if (discountType === "flat") return Math.max(0, Number(discountValue) || 0);
+    if (discountType === "percent") return +(subtotal * (Math.max(0, Math.min(100, Number(discountValue) || 0)) / 100)).toFixed(2);
+    return 0;
+  }, [discountType, discountValue, subtotal]);
+  const total = Math.max(0, +(subtotal - discount - insuranceDiscount).toFixed(2));
+  const effectiveSplits = useMemo<SplitPayment[]>(() => splitMode ? splits : [{ id: "auto", method: autoMethod, amount: total }], [splitMode, splits, autoMethod, total]);
+  const totalPaid = useMemo(() => effectiveSplits.reduce((s, p) => s + (Number(p.amount) || 0), 0), [effectiveSplits]);
   const due = Math.max(0, +(total - totalPaid).toFixed(2));
 
   const addCatalogToCart = (it: any) => {
