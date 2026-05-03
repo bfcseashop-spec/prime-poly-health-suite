@@ -913,11 +913,13 @@ export default function Investment() {
               const investmentTotal = contributions
                 .filter((c: any) => (c.investment_name || "Capital Amount Investment") === selectedInv)
                 .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
-              const baseTotal = investmentTotal > 0
-                ? investmentTotal
-                : shareholders
-                    .filter((s: any) => s.id !== shForm.id)
-                    .reduce((sum: number, s: any) => sum + Number(s.committed_capital_usd || 0), 0);
+              const baseTotal = investmentsTotal > 0
+                ? investmentsTotal
+                : (investmentTotal > 0
+                    ? investmentTotal
+                    : shareholders
+                        .filter((s: any) => s.id !== shForm.id)
+                        .reduce((sum: number, s: any) => sum + Number(s.committed_capital_usd || 0), 0));
               return (
                 <>
                   {/* Share Percentage (drives capital) */}
