@@ -13,7 +13,7 @@ import { Plus, Search, Pill, Pencil, Trash2, PackagePlus, History, TrendingUp, A
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
-import { exportToCSV, exportToExcel, parseImportFile } from "@/lib/dataIO";
+import { exportToCSV, exportToExcel, parseImportFile, downloadTemplate } from "@/lib/dataIO";
 
 type Med = any;
 
@@ -240,24 +240,103 @@ export default function Medicines() {
     setScanInput(""); load();
   };
 
+  const TEMPLATE_HEADERS = [
+    "name","generic_name","brand","category","supplier",
+    "barcode","strip_barcode","packet_barcode","box_barcode",
+    "unit","units_per_strip","units_per_packet","units_per_box",
+    "cost_price_usd","strip_cost_usd","packet_cost_usd","box_cost_usd",
+    "price_usd","strip_price_usd","packet_price_usd","box_price_usd",
+    "stock","low_stock_threshold","expiry_date","image_url",
+  ];
+
   const handleImport = async (file: File) => {
     try {
       const rows = await parseImportFile(file);
       if (!rows.length) return toast.error("Empty file");
-      const cleaned = rows.map((r: any) => ({
-        name: r.name, generic_name: r.generic_name || null, brand: r.brand || null,
-        category: r.category || null, supplier: r.supplier || null,
-        barcode: r.barcode || null, box_barcode: r.box_barcode || null,
-        packet_barcode: r.packet_barcode || null, strip_barcode: r.strip_barcode || null,
-        unit: r.unit || "Pcs",
-        units_per_box: r.units_per_box || null, units_per_packet: r.units_per_packet || null, units_per_strip: r.units_per_strip || null,
-        cost_price_usd: Number(r.cost_price_usd || 0), price_usd: Number(r.price_usd || 0),
-        stock: Number(r.stock || 0), low_stock_threshold: Number(r.low_stock_threshold || 10),
-        expiry_date: r.expiry_date || null, image_url: r.image_url || null,
-      })).filter(r => r.name);
-      const { error } = await supabase.from("medicines").insert(cleaned);
-      if (error) return toast.error(error.message);
-      toast.success(`Imported ${cleaned.length} medicines`); load();
+
+      const num = (v: any) => (v === "" || v == null || isNaN(Number(v))) ? null : Number(v);
+      const numOr0 = (v: any) => Number(v || 0) || 0;
+
+      // derive per-pcs cost/price if not provided but pack price + units exist
+      const derivePerPcs = (price: any, units: any) => {
+        const p = Number(price || 0), u = Number(units || 0);
+        return (p && u) ? p / u : 0;
+      };
+
+      const prepared = rows.map((r: any) => {
+        const upb = num(r.units_per_box), upp = num(r.units_per_packet), ups = num(r.units_per_strip);
+        let cost = numOr0(r.cost_price_usd);
+        if (!cost) cost = derivePerPcs(r.box_cost_usd, upb) || derivePerPcs(r.packet_cost_usd, upp) || derivePerPcs(r.strip_cost_usd, ups);
+        let price = numOr0(r.price_usd);
+        if (!price) price = derivePerPcs(r.box_price_usd, upb) || derivePerPcs(r.packet_price_usd, upp) || derivePerPcs(r.strip_price_usd, ups);
+        return {
+          name: (r.name || "").toString().trim(),
+          generic_name: r.generic_name || null, brand: r.brand || null,
+          category: r.category || null, supplier: r.supplier || null,
+          barcode: r.barcode ? String(r.barcode) : null,
+          box_barcode: r.box_barcode ? String(r.box_barcode) : null,
+          packet_barcode: r.packet_barcode ? String(r.packet_barcode) : null,
+          strip_barcode: r.strip_barcode ? String(r.strip_barcode) : null,
+          unit: r.unit || "Pcs",
+          units_per_box: upb, units_per_packet: upp, units_per_strip: ups,
+          cost_price_usd: Number(cost.toFixed(4)), price_usd: Number(price.toFixed(2)),
+          box_cost_usd: num(r.box_cost_usd), packet_cost_usd: num(r.packet_cost_usd), strip_cost_usd: num(r.strip_cost_usd),
+          box_price_usd: num(r.box_price_usd), packet_price_usd: num(r.packet_price_usd), strip_price_usd: num(r.strip_price_usd),
+          stock: Number(r.stock || 0),
+          low_stock_threshold: Number(r.low_stock_threshold || 10),
+          expiry_date: r.expiry_date || null,
+          image_url: r.image_url || null,
+        };
+      }).filter(r => r.name);
+
+      if (!prepared.length) return toast.error("No valid rows (name required)");
+
+      // Match existing by barcode or by name (case-insensitive)
+      const byBarcode = new Map<string, any>();
+      const byName = new Map<string, any>();
+      meds.forEach(m => {
+        if (m.barcode) byBarcode.set(String(m.barcode), m);
+        byName.set(String(m.name || "").toLowerCase().trim(), m);
+      });
+
+      let inserted = 0, updated = 0, historyRows: any[] = [];
+
+      for (const r of prepared) {
+        const existing = (r.barcode && byBarcode.get(r.barcode)) || byName.get(r.name.toLowerCase());
+        if (existing) {
+          const before = Number(existing.stock || 0);
+          const addStock = r.stock; // treat imported stock as INCOMING quantity for existing
+          const after = before + addStock;
+          const { error } = await supabase.from("medicines").update({ ...r, stock: after }).eq("id", existing.id);
+          if (error) { toast.error(`${r.name}: ${error.message}`); continue; }
+          updated++;
+          if (addStock > 0) {
+            historyRows.push({
+              medicine_id: existing.id, change_type: "purchase", quantity_change: addStock,
+              stock_before: before, stock_after: after, cost_price_usd: r.cost_price_usd,
+              created_by: user?.id, notes: "Bulk import (stock added)",
+            });
+          }
+        } else {
+          const { data, error } = await supabase.from("medicines").insert(r).select().single();
+          if (error) { toast.error(`${r.name}: ${error.message}`); continue; }
+          inserted++;
+          if (data && r.stock > 0) {
+            historyRows.push({
+              medicine_id: data.id, change_type: "initial", quantity_change: r.stock,
+              stock_before: 0, stock_after: r.stock, cost_price_usd: r.cost_price_usd,
+              created_by: user?.id, notes: "Bulk import (initial stock)",
+            });
+          }
+        }
+      }
+
+      if (historyRows.length) {
+        await supabase.from("medicine_stock_history" as any).insert(historyRows);
+      }
+
+      toast.success(`Imported: ${inserted} new, ${updated} updated, ${historyRows.length} stock entries logged`);
+      load();
     } catch (e: any) { toast.error(e.message); }
   };
 
@@ -270,6 +349,7 @@ export default function Medicines() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setOptDlg(true)}><Settings2 className="h-4 w-4 mr-2" />Units / Categories</Button>
+          <Button variant="outline" onClick={() => downloadTemplate(TEMPLATE_HEADERS, "medicines_import_template", { name: "Paracetamol 500mg", generic_name: "Paracetamol", brand: "Square", category: "Tablet", supplier: "ABC Pharma", barcode: "1000001", strip_barcode: "1000002", packet_barcode: "", box_barcode: "1000003", unit: "Pcs", units_per_strip: 10, units_per_packet: "", units_per_box: 100, cost_price_usd: 0.05, price_usd: 0.10, strip_price_usd: 1.00, box_price_usd: 10.00, stock: 100, low_stock_threshold: 20, expiry_date: "2026-12-31", image_url: "" })}><Download className="h-4 w-4 mr-2" />Template</Button>
           <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4 mr-2" />Import</Button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" hidden onChange={e => e.target.files?.[0] && handleImport(e.target.files[0])} />
           <Button variant="outline" onClick={() => exportToExcel(meds, "medicines")}><Download className="h-4 w-4 mr-2" />Export XLSX</Button>
