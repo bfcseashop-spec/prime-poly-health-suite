@@ -361,6 +361,27 @@ export type Database = {
         }
         Relationships: []
       }
+      investment_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       invoice_payments: {
         Row: {
           amount_usd: number
