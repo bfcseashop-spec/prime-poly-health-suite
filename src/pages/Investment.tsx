@@ -86,16 +86,32 @@ export default function Investment() {
   const [search, setSearch] = useState("");
   const [filterMonth, setFilterMonth] = useState<string>("all");
   const [filterInvestor, setFilterInvestor] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [view, setView] = useState<"list" | "grid">("list");
 
+  const [categories, setCategories] = useState<any[]>([]);
+  const [catMgrOpen, setCatMgrOpen] = useState(false);
+  const [catForm, setCatForm] = useState<{ id: string; name: string; color: string }>({ id: "", name: "", color: COLOR_PRESETS[0].value });
+  const [deleteCatId, setDeleteCatId] = useState<string | null>(null);
+  const [investorMgrOpen, setInvestorMgrOpen] = useState(false);
+
+  const CATEGORY_TONE = useMemo(() => {
+    const m: Record<string, string> = {};
+    categories.forEach(c => { m[c.name] = c.color || "bg-muted text-muted-foreground border-border"; });
+    return m;
+  }, [categories]);
+  const CATEGORIES = useMemo(() => categories.map(c => c.name), [categories]);
+
   const load = async () => {
-    const [s, c] = await Promise.all([
+    const [s, c, cat] = await Promise.all([
       (supabase.from("shareholders" as any) as any).select("*").order("created_at"),
       (supabase.from("shareholder_contributions" as any) as any).select("*").order("paid_on", { ascending: false }),
+      (supabase.from("investment_categories" as any) as any).select("*").order("name"),
     ]);
     if (s.error) toast.error(s.error.message);
     setShareholders(s.data ?? []);
     setContributions(c.data ?? []);
+    setCategories(cat.data ?? []);
   };
   useEffect(() => { load(); }, []);
 
