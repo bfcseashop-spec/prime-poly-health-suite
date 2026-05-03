@@ -898,7 +898,7 @@ export default function Investment() {
               </Table>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 overflow-auto max-h-[600px] min-h-[480px] pr-1">
               {filteredContrib.length === 0 ? (
                 <div className="col-span-full text-center py-10 text-muted-foreground text-sm">No contributions</div>
               ) : filteredContrib.map(c => {
