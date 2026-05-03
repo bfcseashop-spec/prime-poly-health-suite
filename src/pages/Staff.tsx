@@ -415,88 +415,112 @@ export default function Staff() {
 
       {/* ADD / EDIT DIALOG */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit Staff Member" : "Add Staff Member"}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-2 py-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label>Full Name *</Label>
-              <Input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} placeholder="Dr. John Smith" />
-            </div>
-            <div className="space-y-2">
-              <Label>Position *</Label>
-              <Select value={form.position} onValueChange={v => setForm({ ...form, position: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {POSITIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Department</Label>
-              <Input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder="e.g. Cardiology" />
-            </div>
-            <div className="space-y-2">
-              <Label>Age</Label>
-              <Input type="number" min={0} value={form.age} onChange={e => setForm({ ...form, age: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Gender</Label>
-              <Select value={form.gender} onValueChange={v => setForm({ ...form, gender: v })}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Joining Date</Label>
-              <Input type="date" value={form.joining_date} onChange={e => setForm({ ...form, joining_date: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Monthly Salary (USD)</Label>
-              <Input type="number" min={0} step="0.01" value={form.monthly_salary_usd} onChange={e => setForm({ ...form, monthly_salary_usd: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Qualification</Label>
-              <Input value={form.qualification} onChange={e => setForm({ ...form, qualification: e.target.value })} placeholder="MBBS, MD, BSc..." />
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="on_leave">On Leave</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Photo URL</Label>
-              <Input value={form.photo_url} onChange={e => setForm({ ...form, photo_url: e.target.value })} placeholder="https://..." />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Address</Label>
-              <Textarea rows={2} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Notes</Label>
-              <Textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-            </div>
-          </div>
-          <DialogFooter>
+
+          <Tabs defaultValue="basic" className="mt-2">
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="basic">Profile</TabsTrigger>
+              <TabsTrigger value="contact">Contact</TabsTrigger>
+              <TabsTrigger value="duty">Duty & Salary</TabsTrigger>
+              <TabsTrigger value="leave">Leave</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="basic" className="space-y-4 pt-3">
+              <div className="flex items-start gap-4">
+                <div className="flex flex-col items-center gap-2">
+                  <Avatar className="h-24 w-24 ring-2 ring-border">
+                    <AvatarImage src={form.photo_url || undefined} />
+                    <AvatarFallback className={cn("text-xl text-white", avatarColor(form.full_name || "?"))}>
+                      {initials(form.full_name || "?")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => e.target.files?.[0] && onPickPhoto(e.target.files[0])} />
+                  <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                    <Upload className="h-3.5 w-3.5 mr-1" />{uploading ? "Uploading…" : "Upload"}
+                  </Button>
+                </div>
+                <div className="flex-1 grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1 sm:col-span-2"><Label>Full Name *</Label><Input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} /></div>
+                  <div className="space-y-1"><Label>Position *</Label>
+                    <Select value={form.position} onValueChange={v => setForm({ ...form, position: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{POSITIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1"><Label>Department</Label><Input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder="Cardiology" /></div>
+                  <div className="space-y-1"><Label>Qualification</Label><Input value={form.qualification} onChange={e => setForm({ ...form, qualification: e.target.value })} placeholder="MBBS, BSc..." /></div>
+                  <div className="space-y-1"><Label>Age</Label><Input type="number" min={0} value={form.age} onChange={e => setForm({ ...form, age: e.target.value })} /></div>
+                  <div className="space-y-1"><Label>Gender</Label>
+                    <Select value={form.gender} onValueChange={v => setForm({ ...form, gender: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1"><Label>Status</Label>
+                    <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="on_leave">On Leave</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="contact" className="space-y-3 pt-3">
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="flex items-center gap-1"><Phone className="h-3 w-3" />Phone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+                <div className="space-y-1"><Label className="flex items-center gap-1"><Send className="h-3 w-3 text-sky-500" />Telegram ID</Label><Input value={form.telegram_id} onChange={e => setForm({ ...form, telegram_id: e.target.value })} placeholder="@username" /></div>
+                <div className="space-y-1 sm:col-span-2"><Label className="flex items-center gap-1"><Mail className="h-3 w-3" />Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+                <div className="space-y-1 sm:col-span-2"><Label>Address</Label><Textarea rows={2} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="duty" className="space-y-4 pt-3">
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div className="space-y-1"><Label>Monthly Salary (USD)</Label><Input type="number" min={0} step="0.01" value={form.monthly_salary_usd} onChange={e => setForm({ ...form, monthly_salary_usd: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Joining Date</Label><Input type="date" value={form.joining_date} onChange={e => setForm({ ...form, joining_date: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Day Off</Label><Input value={form.day_off} onChange={e => setForm({ ...form, day_off: e.target.value })} placeholder="Friday" /></div>
+              </div>
+              <div>
+                <Label className="flex items-center gap-1 mb-2"><CalIcon className="h-3.5 w-3.5" />Weekly Duty Calendar</Label>
+                <div className="grid grid-cols-7 gap-2">
+                  {DAYS.map(day => (
+                    <div key={day} className="rounded-lg border bg-muted/20 p-2">
+                      <div className="text-[11px] font-semibold text-center mb-1">{day}</div>
+                      <Input
+                        className="h-7 text-[11px] text-center px-1"
+                        value={(form.duty_schedule || {})[day] || ""}
+                        onChange={e => setDuty(day, e.target.value)}
+                        placeholder="9-5"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="leave" className="space-y-3 pt-3">
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1"><Label>Leave From</Label><Input type="date" value={form.leave_from} onChange={e => setForm({ ...form, leave_from: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Leave To</Label><Input type="date" value={form.leave_to} onChange={e => setForm({ ...form, leave_to: e.target.value })} /></div>
+                <div className="space-y-1 sm:col-span-2"><Label>Leave Reason</Label><Textarea rows={2} value={form.leave_reason} onChange={e => setForm({ ...form, leave_reason: e.target.value })} /></div>
+                <div className="space-y-1 sm:col-span-2"><Label>Notes</Label><Textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="mt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={submit} className="clinic-gradient text-primary-foreground">
               {form.id ? "Save Changes" : "Add Staff"}
