@@ -519,6 +519,61 @@ export default function IPD() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* TRANSFER DIALOG */}
+      <Dialog open={!!transferFor} onOpenChange={(o) => !o && setTransferFor(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader><DialogTitle>Transfer Patient</DialogTitle></DialogHeader>
+          {transferFor && (
+            <div className="space-y-4 py-2">
+              <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                <p className="font-semibold">{transferFor.patients?.full_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Currently in <span className="font-medium text-foreground">Room {transferFor.rooms?.room_no}</span>
+                  {transferFor.bed_no && <> • Bed {transferFor.bed_no}</>}
+                  {transferFor.doctor_name && <> • Dr. {transferFor.doctor_name}</>}
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>New Room *</Label>
+                  <Select value={transferForm.room_id} onValueChange={v => setTransferForm({ ...transferForm, room_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select destination room" /></SelectTrigger>
+                    <SelectContent>
+                      {rooms.filter(r => r.status === "available" && r.id !== transferFor.room_id).map(r => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.room_no} — {ROOM_TYPE_META[r.room_type]?.label} ({fmtUSD(Number(r.daily_rate_usd))}/day)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>New Bed No</Label>
+                  <Input value={transferForm.bed_no} onChange={e => setTransferForm({ ...transferForm, bed_no: e.target.value })} placeholder="Optional" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Assigned Doctor</Label>
+                  <Input list="doctors-list" value={transferForm.doctor_name} onChange={e => setTransferForm({ ...transferForm, doctor_name: e.target.value })} placeholder="Dr. Name" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Reason for Transfer</Label>
+                  <Textarea value={transferForm.reason} onChange={e => setTransferForm({ ...transferForm, reason: e.target.value })} rows={2} placeholder="e.g. Upgrade to ICU, patient request..." />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Note: Daily rate will switch to the new room's rate from now. Previous room will be marked available.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferFor(null)}>Cancel</Button>
+            <Button onClick={submitTransfer} className="clinic-gradient text-primary-foreground">
+              <ArrowRightLeft className="h-4 w-4 mr-2" />Confirm Transfer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
