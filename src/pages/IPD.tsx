@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import {
   BedDouble, UserPlus, LogOut, Users, Activity, Stethoscope, Search,
   CircleCheck, CircleX, Wrench, Crown, Heart, ArrowRightLeft,
+  History as HistoryIcon,
 } from "lucide-react";
 
 const ROOM_TYPE_META: Record<string, { label: string; color: string; icon: any }> = {
