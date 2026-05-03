@@ -955,6 +955,69 @@ export default function Investment() {
 
           {/* Body */}
           <div className="px-6 py-5 space-y-4 bg-background">
+            {/* Photo upload */}
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="h-20 w-20 border-2 border-primary/20 shadow-sm">
+                  <AvatarImage src={shForm.photo_url || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
+                    {shForm.full_name?.[0]?.toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                {shPhotoUploading && (
+                  <div className="absolute inset-0 rounded-full bg-background/70 flex items-center justify-center">
+                    <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-sm font-medium">Investor Photo</Label>
+                <input
+                  ref={shPhotoRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async e => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    setShPhotoUploading(true);
+                    const url = await uploadInvestorPhoto(f);
+                    setShPhotoUploading(false);
+                    if (url) {
+                      setShForm(p => ({ ...p, photo_url: url }));
+                      toast.success("Photo uploaded");
+                    }
+                    if (shPhotoRef.current) shPhotoRef.current.value = "";
+                  }}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-9"
+                    onClick={() => shPhotoRef.current?.click()}
+                    disabled={shPhotoUploading}
+                  >
+                    <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
+                    {shForm.photo_url ? "Change Photo" : "Upload Photo"}
+                  </Button>
+                  {shForm.photo_url && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 text-destructive hover:text-destructive"
+                      onClick={() => setShForm(p => ({ ...p, photo_url: "" }))}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">PNG/JPG, up to a few MB.</p>
+              </div>
+            </div>
+
             {/* Investment selector — pulls from investments table */}
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">
