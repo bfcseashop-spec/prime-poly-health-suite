@@ -621,69 +621,22 @@ export default function POS() {
             <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5 text-primary" />Invoice Preview</DialogTitle>
           </DialogHeader>
           {lastInvoice && (
-            <div className="space-y-4 text-sm">
-              <div className="flex justify-between items-start border-b-2 border-primary pb-3">
-                <div>
-                  <div className="text-xl font-bold text-primary">+ Prime Poly Clinic</div>
-                  <p className="text-xs text-muted-foreground">Invoice / Receipt</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold">{lastInvoice.invoice}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(lastInvoice.created_at).toLocaleString()}</p>
-                  <Badge variant={lastInvoice.status === "paid" ? "default" : lastInvoice.status === "partial" ? "secondary" : "destructive"} className="mt-1 uppercase">{lastInvoice.status}</Badge>
-                </div>
-              </div>
-              <div className="bg-muted/50 p-2 rounded text-xs">
-                {lastInvoice.patient ? <><b>{lastInvoice.patient.full_name}</b> — {lastInvoice.patient.patient_code}</> : <b>Walk-in customer</b>}
-              </div>
-              <table className="w-full text-xs border-collapse">
-                <thead className="bg-primary text-primary-foreground">
-                  <tr>
-                    <th className="p-2 text-center w-10">SL</th>
-                    <th className="p-2 text-left">Description</th>
-                    <th className="p-2 text-center w-12">Qty</th>
-                    <th className="p-2 text-right w-24">Unit Price</th>
-                    <th className="p-2 text-right w-28">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lastInvoice.items.map((i: any, idx: number) => (
-                    <tr key={idx} className="border-b">
-                      <td className="p-2 text-center">{idx + 1}</td>
-                      <td className="p-2">
-                        <div className="font-medium">{i.name}</div>
-                        <div className="text-[10px] text-muted-foreground capitalize">{i.item_type}{i.description ? ` — ${i.description}` : ""}</div>
-                      </td>
-                      <td className="p-2 text-center">{i.quantity}</td>
-                      <td className="p-2 text-right">{fmtUSD(i.price_usd)}<div className="text-[10px] text-muted-foreground">{KHR(i.price_usd)}</div></td>
-                      <td className="p-2 text-right font-semibold">{fmtUSD(i.price_usd * i.quantity)}<div className="text-[10px] text-muted-foreground font-normal">{KHR(i.price_usd * i.quantity)}</div></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="ml-auto w-full sm:w-2/3 space-y-1">
-                <div className="flex justify-between"><span>Subtotal</span><span>{fmtUSD(lastInvoice.subtotal)} • {KHR(lastInvoice.subtotal)}</span></div>
-                {lastInvoice.discount > 0 && <div className="flex justify-between text-success"><span>Discount</span><span>−{fmtUSD(lastInvoice.discount)}</span></div>}
-                <div className="flex justify-between font-bold text-base text-primary border-y-2 border-primary py-2">
-                  <span>TOTAL</span>
-                  <span className="text-right">{fmtUSD(lastInvoice.total)}<div className="text-xs">{KHR(lastInvoice.total)}</div></span>
-                </div>
-                <div className="flex justify-between"><span>Paid</span><span>{fmtUSD(lastInvoice.paid)}</span></div>
-                {lastInvoice.due > 0 && <div className="flex justify-between text-destructive font-bold"><span>BALANCE DUE</span><span>{fmtUSD(lastInvoice.due)}</span></div>}
-              </div>
-              {lastInvoice.splits?.length > 0 && (
-                <div className="bg-muted/50 p-2 rounded text-xs space-y-1">
-                  <p className="font-semibold">Payment Breakdown</p>
-                  {lastInvoice.splits.map((s: any, i: number) => (
-                    <div key={i} className="flex justify-between"><span className="uppercase">{s.method}</span><span>{fmtUSD(Number(s.amount))}</span></div>
-                  ))}
-                </div>
-              )}
+            <div className="bg-muted/30 rounded-md overflow-hidden border">
+              <iframe
+                title="Invoice preview"
+                srcDoc={buildInvoiceHTML(lastInvoice, false)}
+                className="w-full bg-white"
+                style={{ height: "70vh", border: 0 }}
+              />
             </div>
           )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPreviewOpen(false)}>Close</Button>
-            <Button onClick={() => lastInvoice && printReceipt(lastInvoice)}><Receipt className="h-4 w-4 mr-1" />Print Invoice</Button>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => lastInvoice && printReceipt(lastInvoice, true)}>
+              <Receipt className="h-4 w-4 mr-1" />Print (Compact)
+            </Button>
+            <Button onClick={() => lastInvoice && printReceipt(lastInvoice, false)}>
+              <Receipt className="h-4 w-4 mr-1" />Print (Full size)
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
