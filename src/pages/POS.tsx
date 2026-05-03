@@ -119,12 +119,34 @@ export default function POS() {
   const due = Math.max(0, +(total - totalPaid).toFixed(2));
 
   const addCatalogToCart = (it: any) => {
-    if (it.item_type === "medicine" && it.stock <= 0) return toast.error("Out of stock");
+    if ((it.item_type === "medicine" || it.item_type === "injection") && it.stock <= 0) return toast.error("Out of stock");
+
+    // Packages: add as a single line at the discounted package price.
+    if (it.item_type === "package") {
+      setCart(prev => {
+        if (prev.find(c => c.ref_id === it.id && c.item_type === "package")) {
+          return prev.map(c => c.ref_id === it.id && c.item_type === "package" ? { ...c, quantity: c.quantity + 1 } : c);
+        }
+        const children = (packageItems[it.id] ?? []).map((ch: any) => `${ch.name}${ch.quantity > 1 ? ` ×${ch.quantity}` : ""}`).join(", ");
+        return [...prev, {
+          key: crypto.randomUUID(),
+          item_type: "package",
+          ref_id: it.id,
+          name: it.name,
+          description: children || it.sub,
+          price_usd: it.price,
+          quantity: 1,
+        }];
+      });
+      toast.success(`Added package: ${it.name}`);
+      return;
+    }
+
     setCart(prev => {
-      const existing = prev.find(c => c.ref_id === it.id);
+      const existing = prev.find(c => c.ref_id === it.id && c.item_type === it.item_type);
       if (existing) {
-        if (it.item_type === "medicine" && existing.quantity + 1 > (existing.max ?? 0)) return (toast.error("Not enough stock"), prev);
-        return prev.map(c => c.ref_id === it.id ? { ...c, quantity: c.quantity + 1 } : c);
+        if ((it.item_type === "medicine" || it.item_type === "injection") && existing.quantity + 1 > (existing.max ?? 0)) return (toast.error("Not enough stock"), prev);
+        return prev.map(c => c === existing ? { ...c, quantity: c.quantity + 1 } : c);
       }
       return [...prev, {
         key: crypto.randomUUID(),
@@ -134,7 +156,7 @@ export default function POS() {
         description: it.sub,
         price_usd: it.price,
         quantity: 1,
-        max: it.item_type === "medicine" ? it.stock : undefined,
+        max: (it.item_type === "medicine" || it.item_type === "injection") ? it.stock : undefined,
       }];
     });
   };
