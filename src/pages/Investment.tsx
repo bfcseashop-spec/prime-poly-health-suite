@@ -70,7 +70,7 @@ const emptyContribution = {
 export default function Investment() {
   const [shareholders, setShareholders] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
-
+  const [investments, setInvestments] = useState<any[]>([]);
   const [shOpen, setShOpen] = useState(false);
   const [shForm, setShForm] = useState<typeof emptyShareholder>(emptyShareholder);
 
