@@ -100,7 +100,9 @@ export default function Investment() {
   const [quickInv, setQuickInv] = useState({ full_name: "", email: "", phone: "", notes: "", photo_url: "" });
   const [quickInvSaving, setQuickInvSaving] = useState(false);
   const [quickPhotoUploading, setQuickPhotoUploading] = useState(false);
+  const [shPhotoUploading, setShPhotoUploading] = useState(false);
   const quickPhotoRef = useRef<HTMLInputElement>(null);
+  const shPhotoRef = useRef<HTMLInputElement>(null);
   const investorPhotoRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const uploadInvestorPhoto = async (file: File): Promise<string | null> => {
