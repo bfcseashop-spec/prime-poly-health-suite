@@ -57,6 +57,7 @@ export default function POS() {
   const [packages, setPackages] = useState<any[]>([]);
   const [packageItems, setPackageItems] = useState<Record<string, any[]>>({});
   const [patients, setPatients] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("medicine");
   const [cart, setCart] = useState<CartItem[]>([]);
