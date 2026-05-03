@@ -394,71 +394,64 @@ export default function Investment() {
     } catch (e: any) { toast.error(e.message); }
     finally { setUploading(false); }
   };
+  const recomputeShareholderCapitals = async (newInvestmentsTotal: number) => {
+    // Update each shareholder's committed_capital_usd from share_percent × total
+    await Promise.all(
+      shareholders.map((s: any) => {
+        const pct = Number(s.share_percent || 0);
+        const amt = +((newInvestmentsTotal * pct) / 100).toFixed(2);
+        return (supabase.from("shareholders" as any) as any)
+          .update({ committed_capital_usd: amt }).eq("id", s.id);
+      })
+    );
+  };
+
   const submitC = async () => {
     const amt = Number(cForm.amount_usd);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
     if (!cForm.investment_name?.trim()) return toast.error("Investment name is required");
 
     const { data: u } = await supabase.auth.getUser();
-    const finalNotes = cForm.notes || "";
-    const categoryValue = cForm.category || "Capital";
 
-
-    // Edit mode → single update
     if (cForm.id) {
-      const payload: any = {
-        shareholder_id: cForm.shareholder_id,
-        investment_name: cForm.investment_name.trim(),
-        category: categoryValue,
-        amount_usd: amt,
-        paid_on: cForm.paid_on,
-        payment_method: cForm.payment_method,
-        reference: cForm.reference || null,
-        notes: finalNotes || null,
-        slip_url: cForm.slip_url || null,
-      };
-      const { error } = await (supabase.from("shareholder_contributions" as any) as any).update(payload).eq("id", cForm.id);
+      const { error } = await (supabase.from("investments" as any) as any)
+        .update({ name: cForm.investment_name.trim(), total_amount_usd: amt, notes: cForm.notes || null })
+        .eq("id", cForm.id);
       if (error) return toast.error(error.message);
-      toast.success("Contribution updated");
-      setCOpen(false); load();
-      return;
+    } else {
+      const { error } = await (supabase.from("investments" as any) as any).insert({
+        name: cForm.investment_name.trim(),
+        total_amount_usd: amt,
+        notes: cForm.notes || null,
+        created_by: u.user?.id ?? null,
+      });
+      if (error) return toast.error(error.message);
     }
 
-    // Create mode: split by allocations. If none provided, auto-split across active shareholders by share_percent (fallback equal)
-    let allocs = (cForm.allocations || []).filter(a => a.shareholder_id && Number(a.share_percent) > 0);
-    if (allocs.length === 0) {
-      const active = shareholders.filter((s: any) => s.active !== false);
-      if (active.length === 0) return toast.error("Add at least one investor first");
-      const totalShare = active.reduce((s: number, x: any) => s + Number(x.share_percent || 0), 0);
-      allocs = totalShare > 0
-        ? active.map((s: any) => ({ shareholder_id: s.id, share_percent: Number(s.share_percent || 0) }))
-        : active.map((s: any) => ({ shareholder_id: s.id, share_percent: 100 / active.length }));
-    }
-    const totalPct = allocs.reduce((s, a) => s + Number(a.share_percent || 0), 0);
-    if (totalPct <= 0) return toast.error("Share % must be greater than 0");
+    // Recompute capitals from new total
+    const otherTotal = investments
+      .filter((i: any) => i.id !== cForm.id)
+      .reduce((s, x) => s + Number(x.total_amount_usd || 0), 0);
+    await recomputeShareholderCapitals(otherTotal + amt);
 
-    const rows = allocs.map(a => ({
-      shareholder_id: a.shareholder_id,
-      investment_name: cForm.investment_name.trim(),
-      category: categoryValue,
-      amount_usd: +((amt * Number(a.share_percent)) / totalPct).toFixed(2),
-      paid_on: cForm.paid_on,
-      payment_method: cForm.payment_method,
-      reference: cForm.reference || null,
-      notes: finalNotes || null,
-      slip_url: cForm.slip_url || null,
-      created_by: u.user?.id ?? null,
-    }));
-    const { error } = await (supabase.from("shareholder_contributions" as any) as any).insert(rows);
-    if (error) return toast.error(error.message);
-    toast.success(`Investment recorded for ${allocs.length} investor${allocs.length > 1 ? "s" : ""}`);
+    toast.success(cForm.id ? "Investment updated" : "Investment added");
     setCOpen(false); load();
   };
   const confirmDeleteC = async () => {
     if (!deleteCId) return;
-    const { error } = await (supabase.from("shareholder_contributions" as any) as any).delete().eq("id", deleteCId);
-    if (error) return toast.error(error.message);
-    toast.success("Contribution removed"); setDeleteCId(null); load();
+    const inv = investments.find((i: any) => i.id === deleteCId);
+    if (inv) {
+      const { error } = await (supabase.from("investments" as any) as any).delete().eq("id", deleteCId);
+      if (error) return toast.error(error.message);
+      const newTotal = investments
+        .filter((i: any) => i.id !== deleteCId)
+        .reduce((s, x) => s + Number(x.total_amount_usd || 0), 0);
+      await recomputeShareholderCapitals(newTotal);
+    } else {
+      const { error } = await (supabase.from("shareholder_contributions" as any) as any).delete().eq("id", deleteCId);
+      if (error) return toast.error(error.message);
+    }
+    toast.success("Removed"); setDeleteCId(null); load();
   };
 
   // ===== Category CRUD =====
