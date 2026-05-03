@@ -12,6 +12,7 @@ import { Search, Trash2, Receipt, Pill, Stethoscope, ScanLine, FlaskConical, Act
 import { toast } from "sonner";
 import { fmtUSD, fmtBoth } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
+import { buildInvoiceHTML, printInvoice, KHR } from "@/lib/invoice";
 
 type ItemType = "medicine" | "consultation" | "xray" | "lab" | "service" | "injection" | "package";
 
