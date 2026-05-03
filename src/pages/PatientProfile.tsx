@@ -110,7 +110,9 @@ export default function PatientProfile() {
         ))}
       </div>
 
-      <Tabs defaultValue="records">
+      <SummaryPanel records={records} labs={labs} visits={visits} rx={rx} />
+
+
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="records"><ClipboardList className="h-4 w-4 mr-1" />Medical Records</TabsTrigger>
           <TabsTrigger value="lab"><FlaskConical className="h-4 w-4 mr-1" />Lab Reports</TabsTrigger>
