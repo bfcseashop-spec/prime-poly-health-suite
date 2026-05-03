@@ -57,7 +57,7 @@ export default function Medicines() {
   const [editing, setEditing] = useState<Med | null>(null);
   const [form, setForm] = useState<any>(empty);
   const [stockDlg, setStockDlg] = useState<Med | null>(null);
-  const [stockForm, setStockForm] = useState({ change_type: "purchase", quantity_change: "", cost_price_usd: "", notes: "" });
+  const [stockForm, setStockForm] = useState({ change_type: "purchase", quantity_change: "", unit: "Pcs", cost_price_usd: "", notes: "" });
   const [optDlg, setOptDlg] = useState(false);
   const [scanInput, setScanInput] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -186,24 +186,34 @@ export default function Medicines() {
     toast.success("Deleted"); load();
   };
 
-  const openStock = (m: Med) => { setStockDlg(m); setStockForm({ change_type: "purchase", quantity_change: "", cost_price_usd: m.cost_price_usd ?? "", notes: "" }); };
+  const openStock = (m: Med) => { setStockDlg(m); setStockForm({ change_type: "purchase", quantity_change: "", unit: "Pcs", cost_price_usd: m.cost_price_usd ?? "", notes: "" }); };
+
+  const unitMultiplier = (m: Med, unit: string): number => {
+    if (unit === "Box") return Number(m.units_per_box || 0) || 1;
+    if (unit === "Packet") return Number(m.units_per_packet || 0) || 1;
+    if (unit === "Strip") return Number(m.units_per_strip || 0) || 1;
+    return 1;
+  };
 
   const saveStock = async () => {
     if (!stockDlg) return;
     const qty = Number(stockForm.quantity_change || 0);
     if (!qty) return toast.error("Quantity required");
-    const signed = ["sale", "damage"].includes(stockForm.change_type) ? -Math.abs(qty) : Math.abs(qty);
+    const mult = unitMultiplier(stockDlg, stockForm.unit);
+    const pcsQty = qty * mult;
+    const signed = ["sale", "damage"].includes(stockForm.change_type) ? -Math.abs(pcsQty) : Math.abs(pcsQty);
     const before = Number(stockDlg.stock || 0);
     const after = Math.max(0, before + signed);
     const { error: e1 } = await supabase.from("medicines").update({ stock: after, ...(stockForm.cost_price_usd ? { cost_price_usd: Number(stockForm.cost_price_usd) } : {}) }).eq("id", stockDlg.id);
     if (e1) return toast.error(e1.message);
+    const unitNote = stockForm.unit !== "Pcs" ? `${qty} ${stockForm.unit} × ${mult} = ${pcsQty} pcs` : "";
     await supabase.from("medicine_stock_history" as any).insert({
       medicine_id: stockDlg.id, change_type: stockForm.change_type, quantity_change: signed,
       stock_before: before, stock_after: after,
       cost_price_usd: stockForm.cost_price_usd ? Number(stockForm.cost_price_usd) : null,
-      notes: stockForm.notes || null, created_by: user?.id,
+      notes: [unitNote, stockForm.notes].filter(Boolean).join(" • ") || null, created_by: user?.id,
     });
-    toast.success("Stock updated"); setStockDlg(null); load();
+    toast.success(`Stock updated (${signed > 0 ? "+" : ""}${signed} pcs)`); setStockDlg(null); load();
   };
 
   const handleScan = async (code: string) => {
@@ -626,7 +636,25 @@ export default function Medicines() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5"><Label>Quantity</Label><Input type="number" value={stockForm.quantity_change} onChange={e => setStockForm({ ...stockForm, quantity_change: e.target.value })} autoFocus /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Quantity</Label><Input type="number" value={stockForm.quantity_change} onChange={e => setStockForm({ ...stockForm, quantity_change: e.target.value })} autoFocus /></div>
+              <div className="space-y-1.5"><Label>Unit</Label>
+                <Select value={stockForm.unit} onValueChange={v => setStockForm({ ...stockForm, unit: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pcs">Pcs (single)</SelectItem>
+                    {stockDlg?.units_per_strip ? <SelectItem value="Strip">Strip ({stockDlg.units_per_strip} pcs)</SelectItem> : null}
+                    {stockDlg?.units_per_packet ? <SelectItem value="Packet">Packet ({stockDlg.units_per_packet} pcs)</SelectItem> : null}
+                    {stockDlg?.units_per_box ? <SelectItem value="Box">Box ({stockDlg.units_per_box} pcs)</SelectItem> : null}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {stockDlg && stockForm.quantity_change && stockForm.unit !== "Pcs" && (
+              <div className="rounded-md bg-primary/10 border border-primary/30 p-2 text-sm">
+                ✨ {stockForm.quantity_change} {stockForm.unit} × {unitMultiplier(stockDlg, stockForm.unit)} = <span className="font-bold text-primary">{Number(stockForm.quantity_change) * unitMultiplier(stockDlg, stockForm.unit)} pcs</span>
+              </div>
+            )}
             <div className="space-y-1.5"><Label>Cost Price / Unit (optional)</Label><Input type="number" step="0.01" value={stockForm.cost_price_usd} onChange={e => setStockForm({ ...stockForm, cost_price_usd: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Notes</Label><Input value={stockForm.notes} onChange={e => setStockForm({ ...stockForm, notes: e.target.value })} placeholder="Invoice no, reason..." /></div>
           </div>
