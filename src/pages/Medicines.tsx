@@ -555,19 +555,7 @@ export default function Medicines() {
               </div>
             </div>
 
-            {/* Packaging + Barcodes */}
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <h3 className="text-sm font-semibold mb-3 text-primary">📦 Packaging & Barcodes</h3>
-              <div className="grid grid-cols-4 gap-3 items-end">
-                <div className="space-y-1.5"><Label className="text-xs">Pcs Barcode</Label><Input value={form.barcode} onChange={e => setForm({ ...form, barcode: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Strip (পাতা) Barcode</Label><Input value={form.strip_barcode} onChange={e => setForm({ ...form, strip_barcode: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Packet Barcode</Label><Input value={form.packet_barcode} onChange={e => setForm({ ...form, packet_barcode: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Box Barcode</Label><Input value={form.box_barcode} onChange={e => setForm({ ...form, box_barcode: e.target.value })} /></div>
-                <div className="space-y-1.5 col-start-2"><Label className="text-xs">Units / Strip</Label><Input type="number" value={form.units_per_strip} onChange={e => setForm({ ...form, units_per_strip: e.target.value })} placeholder="10" /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Units / Packet</Label><Input type="number" value={form.units_per_packet} onChange={e => setForm({ ...form, units_per_packet: e.target.value })} placeholder="20" /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Units / Box</Label><Input type="number" value={form.units_per_box} onChange={e => setForm({ ...form, units_per_box: e.target.value })} placeholder="100" /></div>
-              </div>
-            </div>
+            {/* Packaging & Barcodes section removed */}
 
             {/* Pricing */}
             <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4 space-y-4">
