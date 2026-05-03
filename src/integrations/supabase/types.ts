@@ -50,6 +50,134 @@ export type Database = {
         }
         Relationships: []
       }
+      health_package_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_type: string
+          name: string
+          package_id: string
+          price_usd: number
+          quantity: number
+          ref_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_type: string
+          name: string
+          package_id: string
+          price_usd?: number
+          quantity?: number
+          ref_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_type?: string
+          name?: string
+          package_id?: string
+          price_usd?: number
+          quantity?: number
+          ref_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_package_items_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "health_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_packages: {
+        Row: {
+          active: boolean
+          category: string | null
+          code: string | null
+          created_at: string
+          description: string | null
+          discount_percent: number
+          final_price_usd: number
+          id: string
+          name: string
+          total_price_usd: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          discount_percent?: number
+          final_price_usd?: number
+          id?: string
+          name: string
+          total_price_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          discount_percent?: number
+          final_price_usd?: number
+          id?: string
+          name?: string
+          total_price_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      injections: {
+        Row: {
+          active: boolean
+          brand: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          dose: string | null
+          id: string
+          name: string
+          price_usd: number
+          route: string | null
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          dose?: string | null
+          id?: string
+          name: string
+          price_usd?: number
+          route?: string | null
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          dose?: string | null
+          id?: string
+          name?: string
+          price_usd?: number
+          route?: string | null
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       insurance_cards: {
         Row: {
           card_no: string
