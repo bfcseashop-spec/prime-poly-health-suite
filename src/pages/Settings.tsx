@@ -82,7 +82,7 @@ export default function Settings() {
       supabase.from("user_roles").select("user_id, role"),
     ]);
     const map: Record<string, any> = {};
-    (profs ?? []).forEach((p: any) => { map[p.user_id] = { ...p, roles: [] }; });
+    (profs ?? []).forEach((p: any) => { map[p.id] = { user_id: p.id, full_name: p.full_name, phone: p.phone, roles: [] }; });
     (rolesData ?? []).forEach((r: any) => {
       if (!map[r.user_id]) map[r.user_id] = { user_id: r.user_id, roles: [] };
       map[r.user_id].roles.push(r.role);
