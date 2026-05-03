@@ -397,12 +397,23 @@ export default function Services() {
         {/* PACKAGES */}
         <TabsContent value="packages" className="space-y-4">
           <Card>
-            <CardHeader className="flex-row items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search packages..." className="pl-9" value={pkgQ} onChange={e => setPkgQ(e.target.value)} />
+            <CardHeader className="flex-col gap-3 items-stretch">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search packages..." className="pl-9" value={pkgQ} onChange={e => setPkgQ(e.target.value)} />
+                </div>
+                <Select value={pkgCat} onValueChange={setPkgCat}>
+                  <SelectTrigger className="w-[150px]"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Categories</SelectItem>{PKG_CATS.map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={pkgStatus} onValueChange={setPkgStatus}>
+                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
+                </Select>
+                <Button variant="outline" onClick={() => exportToExcel(fPkgs.map(({ id, ...r }) => r), "packages")}><Download className="h-4 w-4" /> Export</Button>
+                <Button onClick={() => openPkgDlg()}><Plus className="h-4 w-4" /> New Package</Button>
               </div>
-              <Button onClick={() => openPkgDlg()}><Plus className="h-4 w-4" /> New Package</Button>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
