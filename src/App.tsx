@@ -21,6 +21,7 @@ import Insurance from "./pages/Insurance";
 import Laboratory from "./pages/Laboratory";
 import XRay from "./pages/XRay";
 import Services from "./pages/Services";
+import Medicines from "./pages/Medicines";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
