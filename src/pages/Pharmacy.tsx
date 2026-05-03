@@ -236,7 +236,7 @@ export default function Pharmacy() {
                   <div className="space-y-1"><Label className="text-xs">Payment</Label>
                     <Select value={payment} onValueChange={setPayment}>
                       <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                      <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</Select>
+                      <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
