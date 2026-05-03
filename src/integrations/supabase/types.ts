@@ -565,6 +565,24 @@ export type Database = {
         }
         Relationships: []
       }
+      medicine_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       medicine_sale_items: {
         Row: {
           description: string | null
@@ -733,6 +751,24 @@ export type Database = {
           quantity_change?: number
           stock_after?: number
           stock_before?: number
+        }
+        Relationships: []
+      }
+      medicine_units: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
