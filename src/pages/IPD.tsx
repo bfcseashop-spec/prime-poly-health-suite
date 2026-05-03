@@ -44,7 +44,19 @@ export default function IPD() {
   const [dischargeFor, setDischargeFor] = useState<any | null>(null);
   const [transferFor, setTransferFor] = useState<any | null>(null);
   const [transferForm, setTransferForm] = useState<{ room_id: string; bed_no: string; doctor_name: string; reason: string }>({ room_id: "", bed_no: "", doctor_name: "", reason: "" });
+  const [historyFor, setHistoryFor] = useState<any | null>(null);
+  const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [preselectRoom, setPreselectRoom] = useState<string>("");
+
+  const openHistory = async (adm: any) => {
+    setHistoryFor(adm);
+    setHistoryRows([]);
+    const { data } = await (supabase.from("admission_transfers" as any) as any)
+      .select("*")
+      .eq("admission_id", adm.id)
+      .order("transferred_at", { ascending: false });
+    setHistoryRows(data ?? []);
+  };
 
   const [form, setForm] = useState<any>({
     patient_id: "", room_id: "", doctor_name: "", admission_type: "general",
