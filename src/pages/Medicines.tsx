@@ -759,6 +759,43 @@ export default function Medicines() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+
+      <Dialog open={!!viewRow} onOpenChange={(o) => !o && setViewRow(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Medicine Details</DialogTitle></DialogHeader>
+          {viewRow && (
+            <div className="space-y-4">
+              <div className="flex gap-4">
+                {viewRow.image_url ? (
+                  <img src={viewRow.image_url} alt={viewRow.name} className="h-28 w-28 rounded-lg object-cover border" />
+                ) : (
+                  <div className="h-28 w-28 rounded-lg bg-muted flex items-center justify-center"><Pill className="h-10 w-10 text-muted-foreground" /></div>
+                )}
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold">{viewRow.name}</h3>
+                  {viewRow.generic_name && <p className="text-sm text-muted-foreground">{viewRow.generic_name}</p>}
+                  {viewRow.brand && <p className="text-xs text-muted-foreground">Brand: {viewRow.brand}</p>}
+                  {viewRow.category && <Badge variant="outline" className="mt-2">{viewRow.category}</Badge>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                <div><div className="text-xs text-muted-foreground">Purchase / Pcs</div><div className="font-mono font-semibold">{fmtUSD(Number(viewRow.cost_price_usd ?? 0))}</div></div>
+                <div><div className="text-xs text-muted-foreground">Selling / Pcs</div><div className="font-mono font-semibold text-primary">{fmtUSD(Number(viewRow.price_usd ?? 0))}</div></div>
+                <div><div className="text-xs text-muted-foreground">Available</div><div className="font-mono font-semibold">{viewRow.stock}</div></div>
+                <div><div className="text-xs text-muted-foreground">Sold</div><div className="font-mono font-semibold">{soldMap[viewRow.id] ?? 0}</div></div>
+                <div><div className="text-xs text-muted-foreground">Total Pcs</div><div className="font-mono font-semibold">{Number(viewRow.stock ?? 0) + (soldMap[viewRow.id] ?? 0)}</div></div>
+                <div><div className="text-xs text-muted-foreground">Low Threshold</div><div className="font-mono">{viewRow.low_stock_threshold}</div></div>
+                <div><div className="text-xs text-muted-foreground">Unit</div><div>{viewRow.unit}</div></div>
+                <div><div className="text-xs text-muted-foreground">Supplier</div><div>{viewRow.supplier ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Expiry</div><div>{viewRow.expiry_date ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Pcs Barcode</div><div className="font-mono text-xs">{viewRow.barcode ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Strip Barcode</div><div className="font-mono text-xs">{viewRow.strip_barcode ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Box Barcode</div><div className="font-mono text-xs">{viewRow.box_barcode ?? "—"}</div></div>
+              </div>
+            </div>
+          )}
+          <DialogFooter><Button variant="outline" onClick={() => setViewRow(null)}>Close</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
   );
 }
