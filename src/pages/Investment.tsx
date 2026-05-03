@@ -1056,14 +1056,6 @@ export default function Investment() {
               {cForm.id ? "Save Changes" : "Add Investment"}
             </Button>
           </div>
-
-            <Button
-              onClick={submitC}
-              className="w-full h-11 clinic-gradient text-primary-foreground font-semibold text-base shadow-md"
-            >
-              {cForm.id ? "Save Changes" : "Add Investment"}
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 
