@@ -15,6 +15,7 @@ import OPD from "./pages/OPD";
 import Prescriptions from "./pages/Prescriptions";
 import POS from "./pages/POS";
 import DueManagement from "./pages/DueManagement";
+import Invoices from "./pages/Invoices";
 import Expenses from "./pages/Expenses";
 import Insurance from "./pages/Insurance";
 import ComingSoon from "./pages/ComingSoon";

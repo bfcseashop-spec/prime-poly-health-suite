@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet, ShieldCheck, CreditCard } from "lucide-react";
+import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet, ShieldCheck, CreditCard, History } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, SidebarHeader } from "@/components/ui/sidebar";
 import { ClinicLogo } from "./ClinicLogo";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ const main: Item[] = [
   { title: "Prescriptions", url: "/prescriptions", icon: FileText, roles: ["admin","doctor"] },
   { title: "POS / Billing", url: "/pos", icon: Receipt, roles: ["admin","pharmacist","receptionist","accountant"] },
   { title: "Due Management", url: "/due-management", icon: CreditCard, roles: ["admin","accountant","receptionist","pharmacist"] },
+  { title: "Invoice History", url: "/invoices", icon: History, roles: ["admin","accountant","receptionist","pharmacist"] },
 ];
 const future: Item[] = [
   { title: "Pharmacy", url: "/pos", icon: Pill, roles: ["admin","pharmacist"] },
