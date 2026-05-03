@@ -143,6 +143,129 @@ export type Database = {
         }
         Relationships: []
       }
+      lab_order_items: {
+        Row: {
+          category: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          flag: string | null
+          id: string
+          order_id: string
+          price_usd: number
+          reference_range: string | null
+          result_file_url: string | null
+          result_notes: string | null
+          result_unit: string | null
+          result_value: string | null
+          sample_type: string | null
+          status: string
+          test_id: string | null
+          test_name: string
+        }
+        Insert: {
+          category?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          flag?: string | null
+          id?: string
+          order_id: string
+          price_usd?: number
+          reference_range?: string | null
+          result_file_url?: string | null
+          result_notes?: string | null
+          result_unit?: string | null
+          result_value?: string | null
+          sample_type?: string | null
+          status?: string
+          test_id?: string | null
+          test_name: string
+        }
+        Update: {
+          category?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          flag?: string | null
+          id?: string
+          order_id?: string
+          price_usd?: number
+          reference_range?: string | null
+          result_file_url?: string | null
+          result_notes?: string | null
+          result_unit?: string | null
+          result_value?: string | null
+          sample_type?: string | null
+          status?: string
+          test_id?: string | null
+          test_name?: string
+        }
+        Relationships: []
+      }
+      lab_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          doctor_id: string | null
+          doctor_name: string | null
+          id: string
+          notes: string | null
+          order_no: string
+          ordered_on: string
+          patient_id: string
+          priority: string
+          sample_collected_at: string | null
+          sample_collected_by: string | null
+          sample_notes: string | null
+          sample_status: string
+          status: string
+          total_usd: number
+          updated_at: string
+          visit_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          id?: string
+          notes?: string | null
+          order_no?: string
+          ordered_on?: string
+          patient_id: string
+          priority?: string
+          sample_collected_at?: string | null
+          sample_collected_by?: string | null
+          sample_notes?: string | null
+          sample_status?: string
+          status?: string
+          total_usd?: number
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          id?: string
+          notes?: string | null
+          order_no?: string
+          ordered_on?: string
+          patient_id?: string
+          priority?: string
+          sample_collected_at?: string | null
+          sample_collected_by?: string | null
+          sample_notes?: string | null
+          sample_status?: string
+          status?: string
+          total_usd?: number
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Relationships: []
+      }
       lab_reports: {
         Row: {
           created_at: string
@@ -203,6 +326,54 @@ export type Database = {
           test_type?: string | null
           updated_at?: string
           visit_id?: string | null
+        }
+        Relationships: []
+      }
+      lab_tests: {
+        Row: {
+          active: boolean
+          category: string
+          code: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          price_usd: number
+          reference_range: string | null
+          sample_type: string | null
+          turnaround_hours: number | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          price_usd?: number
+          reference_range?: string | null
+          sample_type?: string | null
+          turnaround_hours?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          price_usd?: number
+          reference_range?: string | null
+          sample_type?: string | null
+          turnaround_hours?: number | null
+          unit?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -820,6 +991,7 @@ export type Database = {
         Returns: string
       }
       generate_invoice_no: { Args: never; Returns: string }
+      generate_lab_order_no: { Args: never; Returns: string }
       generate_patient_code: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }
