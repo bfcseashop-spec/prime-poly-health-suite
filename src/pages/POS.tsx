@@ -8,20 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Trash2, Receipt, Pill, Stethoscope, ScanLine, FlaskConical, Activity, ScanBarcode, X, Plus, CreditCard, Wallet, Banknote, Clock } from "lucide-react";
+import { Search, Trash2, Receipt, Pill, Stethoscope, ScanLine, FlaskConical, Activity, ScanBarcode, X, Plus, CreditCard, Wallet, Banknote, Clock, Syringe, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { fmtUSD, fmtBoth } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
 
+type ItemType = "medicine" | "consultation" | "xray" | "lab" | "service" | "injection" | "package";
+
 type CartItem = {
   key: string;
-  item_type: "medicine" | "consultation" | "xray" | "lab" | "service";
+  item_type: ItemType;
   ref_id?: string | null;
   name: string;
   description?: string | null;
   price_usd: number;
   quantity: number;
-  max?: number; // stock for medicines
+  max?: number; // stock for medicines/injections
+  package_id?: string | null; // links package child rows to parent
 };
 
 type SplitPayment = { id: string; method: string; amount: number; reference?: string };
@@ -36,6 +39,8 @@ const PAYMENTS = [
 
 const CAT_META: Record<string, { label: string; icon: any; color: string }> = {
   medicine: { label: "Medicines", icon: Pill, color: "text-emerald-600 bg-emerald-50" },
+  injection: { label: "Injections", icon: Syringe, color: "text-cyan-600 bg-cyan-50" },
+  package: { label: "Packages", icon: Layers, color: "text-indigo-600 bg-indigo-50" },
   consultation: { label: "Consultation", icon: Stethoscope, color: "text-blue-600 bg-blue-50" },
   xray: { label: "X-Ray", icon: ScanLine, color: "text-purple-600 bg-purple-50" },
   lab: { label: "Lab Tests", icon: FlaskConical, color: "text-amber-600 bg-amber-50" },
@@ -46,6 +51,9 @@ export default function POS() {
   const { user } = useAuth();
   const [meds, setMeds] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [injections, setInjections] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [packageItems, setPackageItems] = useState<Record<string, any[]>>({});
   const [patients, setPatients] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("medicine");
@@ -60,27 +68,49 @@ export default function POS() {
   const [custom, setCustom] = useState({ name: "", price_usd: 0, item_type: "service" as CartItem["item_type"] });
 
   const load = async () => {
-    const [m, s, p] = await Promise.all([
+    const [m, s, p, inj, pkg, pkgI] = await Promise.all([
       supabase.from("medicines").select("*").order("name"),
       supabase.from("service_catalog" as any).select("*").eq("active", true).order("name"),
       supabase.from("patients").select("id, full_name, patient_code").order("created_at", { ascending: false }).limit(200),
+      supabase.from("injections" as any).select("*").eq("active", true).order("name"),
+      supabase.from("health_packages" as any).select("*").eq("active", true).order("name"),
+      supabase.from("health_package_items" as any).select("*"),
     ]);
     setMeds(m.data ?? []);
     setServices((s.data as any[]) ?? []);
     setPatients(p.data ?? []);
+    setInjections((inj.data as any[]) ?? []);
+    setPackages((pkg.data as any[]) ?? []);
+    const grouped: Record<string, any[]> = {};
+    ((pkgI.data as any[]) ?? []).forEach((it: any) => {
+      grouped[it.package_id] = grouped[it.package_id] || [];
+      grouped[it.package_id].push(it);
+    });
+    setPackageItems(grouped);
   };
   useEffect(() => { load(); }, []);
 
   const catalogItems = useMemo(() => {
+    const ql = q.toLowerCase();
     if (activeCat === "medicine") {
       return meds
-        .filter(m => !q || m.name.toLowerCase().includes(q.toLowerCase()) || m.brand?.toLowerCase().includes(q.toLowerCase()) || m.barcode === q)
+        .filter(m => !q || m.name.toLowerCase().includes(ql) || m.brand?.toLowerCase().includes(ql) || m.barcode === q)
         .map(m => ({ id: m.id, name: m.name, sub: m.brand, price: Number(m.price_usd), stock: m.stock, low: m.stock <= m.low_stock_threshold, item_type: "medicine" as const, raw: m }));
     }
+    if (activeCat === "injection") {
+      return injections
+        .filter(i => !q || i.name.toLowerCase().includes(ql) || i.brand?.toLowerCase().includes(ql))
+        .map(i => ({ id: i.id, name: i.name, sub: [i.brand, i.dose, i.route].filter(Boolean).join(" • "), price: Number(i.price_usd), stock: i.stock, low: i.stock <= 5, item_type: "injection" as const, raw: i }));
+    }
+    if (activeCat === "package") {
+      return packages
+        .filter(p => !q || p.name.toLowerCase().includes(ql))
+        .map(p => ({ id: p.id, name: p.name, sub: p.description, price: Number(p.final_price_usd), item_type: "package" as const, raw: p }));
+    }
     return services
-      .filter(s => s.category === activeCat && (!q || s.name.toLowerCase().includes(q.toLowerCase())))
+      .filter(s => s.category === activeCat && (!q || s.name.toLowerCase().includes(ql)))
       .map(s => ({ id: s.id, name: s.name, sub: s.description, price: Number(s.price_usd), item_type: s.category as CartItem["item_type"], raw: s }));
-  }, [activeCat, meds, services, q]);
+  }, [activeCat, meds, services, injections, packages, q]);
 
   const subtotal = useMemo(() => cart.reduce((s, c) => s + c.price_usd * c.quantity, 0), [cart]);
   const insuranceDiscount = insuranceCard ? +(subtotal * (Number(insuranceCard.discount_percent) / 100)).toFixed(2) : 0;
@@ -89,12 +119,34 @@ export default function POS() {
   const due = Math.max(0, +(total - totalPaid).toFixed(2));
 
   const addCatalogToCart = (it: any) => {
-    if (it.item_type === "medicine" && it.stock <= 0) return toast.error("Out of stock");
+    if ((it.item_type === "medicine" || it.item_type === "injection") && it.stock <= 0) return toast.error("Out of stock");
+
+    // Packages: add as a single line at the discounted package price.
+    if (it.item_type === "package") {
+      setCart(prev => {
+        if (prev.find(c => c.ref_id === it.id && c.item_type === "package")) {
+          return prev.map(c => c.ref_id === it.id && c.item_type === "package" ? { ...c, quantity: c.quantity + 1 } : c);
+        }
+        const children = (packageItems[it.id] ?? []).map((ch: any) => `${ch.name}${ch.quantity > 1 ? ` ×${ch.quantity}` : ""}`).join(", ");
+        return [...prev, {
+          key: crypto.randomUUID(),
+          item_type: "package",
+          ref_id: it.id,
+          name: it.name,
+          description: children || it.sub,
+          price_usd: it.price,
+          quantity: 1,
+        }];
+      });
+      toast.success(`Added package: ${it.name}`);
+      return;
+    }
+
     setCart(prev => {
-      const existing = prev.find(c => c.ref_id === it.id);
+      const existing = prev.find(c => c.ref_id === it.id && c.item_type === it.item_type);
       if (existing) {
-        if (it.item_type === "medicine" && existing.quantity + 1 > (existing.max ?? 0)) return (toast.error("Not enough stock"), prev);
-        return prev.map(c => c.ref_id === it.id ? { ...c, quantity: c.quantity + 1 } : c);
+        if ((it.item_type === "medicine" || it.item_type === "injection") && existing.quantity + 1 > (existing.max ?? 0)) return (toast.error("Not enough stock"), prev);
+        return prev.map(c => c === existing ? { ...c, quantity: c.quantity + 1 } : c);
       }
       return [...prev, {
         key: crypto.randomUUID(),
@@ -104,7 +156,7 @@ export default function POS() {
         description: it.sub,
         price_usd: it.price,
         quantity: 1,
-        max: it.item_type === "medicine" ? it.stock : undefined,
+        max: (it.item_type === "medicine" || it.item_type === "injection") ? it.stock : undefined,
       }];
     });
   };
@@ -203,6 +255,11 @@ export default function POS() {
     for (const c of cart.filter(x => x.item_type === "medicine" && x.ref_id)) {
       const m = meds.find(x => x.id === c.ref_id);
       if (m) await supabase.from("medicines").update({ stock: m.stock - c.quantity }).eq("id", c.ref_id!);
+    }
+    // decrement injection stock
+    for (const c of cart.filter(x => x.item_type === "injection" && x.ref_id)) {
+      const inj = injections.find(x => x.id === c.ref_id);
+      if (inj) await supabase.from("injections" as any).update({ stock: Math.max(0, inj.stock - c.quantity) }).eq("id", c.ref_id!);
     }
 
     if (insuranceCard && insuranceDiscount > 0) {
