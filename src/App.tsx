@@ -25,6 +25,7 @@ import Medicines from "./pages/Medicines";
 import OperationTheater from "./pages/OperationTheater";
 import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
+import IPD from "./pages/IPD";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 

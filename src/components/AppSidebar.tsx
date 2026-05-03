@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet, ShieldCheck, CreditCard, History, Layers, PillBottle } from "lucide-react";
+import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet, ShieldCheck, CreditCard, History, Layers, PillBottle, BedDouble } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, SidebarHeader } from "@/components/ui/sidebar";
 import { ClinicLogo } from "./ClinicLogo";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ const main: Item[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Patients", url: "/patients", icon: Users, roles: ["admin","doctor","nurse","receptionist","accountant"] },
   { title: "OPD Queue", url: "/opd", icon: Stethoscope, roles: ["admin","doctor","nurse","receptionist"] },
+  { title: "IPD / Admissions", url: "/ipd", icon: BedDouble, roles: ["admin","doctor","nurse","receptionist"] },
   { title: "Prescriptions", url: "/prescriptions", icon: FileText, roles: ["admin","doctor"] },
   { title: "Medicines", url: "/medicines", icon: PillBottle, roles: ["admin","pharmacist"] },
   { title: "POS / Billing", url: "/pos", icon: Receipt, roles: ["admin","pharmacist","receptionist","accountant"] },
