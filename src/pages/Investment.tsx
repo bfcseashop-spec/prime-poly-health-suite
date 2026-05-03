@@ -1246,70 +1246,127 @@ export default function Investment() {
 
       {/* INVESTOR MANAGER */}
       <Dialog open={investorMgrOpen} onOpenChange={setInvestorMgrOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Manage Investors</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => { setInvestorMgrOpen(false); openNewSh(); }} className="clinic-gradient text-primary-foreground">
-                <Plus className="h-4 w-4 mr-1" />Add Investor
-              </Button>
+        <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="px-6 pt-5 pb-4 border-b bg-muted/30 shrink-0">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+                <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-primary/10 text-primary">
+                  <Users className="h-4 w-4" />
+                </span>
+                Manage Investors
+              </DialogTitle>
+              <p className="text-xs text-muted-foreground pl-9">
+                Add and edit investors to select when creating investments.
+              </p>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 py-5 space-y-5 bg-background overflow-y-auto">
+            {/* Add new investor */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Add new investor</Label>
+              <div className="rounded-xl border-2 border-dashed bg-muted/20 p-3 space-y-2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    placeholder="Name *"
+                    className="h-10 border-2 bg-background flex-1"
+                    value={quickInv.full_name}
+                    onChange={e => setQuickInv({ ...quickInv, full_name: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Email"
+                    className="h-10 border-2 bg-background flex-1"
+                    value={quickInv.email}
+                    onChange={e => setQuickInv({ ...quickInv, email: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Phone"
+                    className="h-10 border-2 bg-background flex-1"
+                    value={quickInv.phone}
+                    onChange={e => setQuickInv({ ...quickInv, phone: e.target.value })}
+                  />
+                  <Button
+                    onClick={addQuickInvestor}
+                    disabled={quickInvSaving}
+                    className="h-10 px-6 clinic-gradient text-primary-foreground font-semibold shrink-0"
+                  >
+                    {quickInvSaving ? "Adding..." : "Add"}
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Notes"
+                  className="h-10 border-2 bg-background"
+                  value={quickInv.notes}
+                  onChange={e => setQuickInv({ ...quickInv, notes: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Investor</TableHead>
-                    <TableHead>Share %</TableHead>
-                    <TableHead className="text-right">Capital</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Due</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {shareholders.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No investors</TableCell></TableRow>
-                  ) : shareholders.map((s, idx) => {
+
+            {/* Investors list */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Investors list</Label>
+                <span className="text-xs text-muted-foreground">{shareholders.length} total</span>
+              </div>
+              {shareholders.length === 0 ? (
+                <div className="rounded-xl border-2 border-dashed py-10 text-center text-sm text-muted-foreground">
+                  No investors yet. Add one above to get started.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {shareholders.map((s, idx) => {
                     const committed = Number(s.committed_capital_usd || 0);
                     const paid = paidByShareholder[s.id] || 0;
-                    const due = Math.max(0, committed - paid);
                     return (
-                      <TableRow key={s.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={s.photo_url || undefined} />
-                              <AvatarFallback className="text-primary-foreground text-xs" style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}>
-                                {s.full_name?.[0]?.toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">{s.full_name}</p>
-                              <p className="text-[11px] text-muted-foreground">{s.phone || s.email || "—"}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell><Badge variant="outline">{Number(s.share_percent || 0)}%</Badge></TableCell>
-                        <TableCell className="text-right font-semibold">{fmtUSD(committed)}</TableCell>
-                        <TableCell className="text-right text-success font-semibold">{fmtUSD(paid)}</TableCell>
-                        <TableCell className="text-right text-warning font-semibold">{fmtUSD(due)}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setInvestorMgrOpen(false); openEditSh(s); }}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteShId(s.id)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <div
+                        key={s.id}
+                        className="group flex items-center gap-3 rounded-xl border bg-card hover:bg-muted/40 hover:shadow-sm transition px-3 py-2.5"
+                      >
+                        <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background shadow-sm">
+                          <AvatarImage src={s.photo_url || undefined} />
+                          <AvatarFallback
+                            className="text-primary-foreground text-sm font-semibold"
+                            style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}
+                          >
+                            {s.full_name?.[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{s.full_name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {s.email || s.phone || "—"}
+                          </p>
+                        </div>
+                        <div className="hidden md:flex items-center gap-2 mr-1">
+                          <Badge variant="outline" className="font-normal">
+                            {Number(s.share_percent || 0)}%
+                          </Badge>
+                          <span className="text-xs text-muted-foreground tabular-nums">
+                            {fmtUSD(committed)}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-3 text-xs font-medium text-muted-foreground hover:text-primary"
+                          onClick={() => { setInvestorMgrOpen(false); openEditSh(s); }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-3 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteShId(s.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
