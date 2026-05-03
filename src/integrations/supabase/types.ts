@@ -187,19 +187,26 @@ export type Database = {
       }
       doctors: {
         Row: {
+          address: string | null
           available_days: string | null
           available_hours: string | null
           bio: string | null
           consultation_fee_usd: number
           created_at: string
           created_by: string | null
+          day_off: string | null
           department: string | null
+          duty_schedule: Json
           email: string | null
           experience_years: number | null
           full_name: string
           gender: string | null
           id: string
           joining_date: string | null
+          leave_from: string | null
+          leave_reason: string | null
+          leave_to: string | null
+          monthly_salary_usd: number
           notes: string | null
           phone: string | null
           photo_url: string | null
@@ -208,22 +215,30 @@ export type Database = {
           room_no: string | null
           specialization: string | null
           status: string
+          telegram_id: string | null
           updated_at: string
         }
         Insert: {
+          address?: string | null
           available_days?: string | null
           available_hours?: string | null
           bio?: string | null
           consultation_fee_usd?: number
           created_at?: string
           created_by?: string | null
+          day_off?: string | null
           department?: string | null
+          duty_schedule?: Json
           email?: string | null
           experience_years?: number | null
           full_name: string
           gender?: string | null
           id?: string
           joining_date?: string | null
+          leave_from?: string | null
+          leave_reason?: string | null
+          leave_to?: string | null
+          monthly_salary_usd?: number
           notes?: string | null
           phone?: string | null
           photo_url?: string | null
@@ -232,22 +247,30 @@ export type Database = {
           room_no?: string | null
           specialization?: string | null
           status?: string
+          telegram_id?: string | null
           updated_at?: string
         }
         Update: {
+          address?: string | null
           available_days?: string | null
           available_hours?: string | null
           bio?: string | null
           consultation_fee_usd?: number
           created_at?: string
           created_by?: string | null
+          day_off?: string | null
           department?: string | null
+          duty_schedule?: Json
           email?: string | null
           experience_years?: number | null
           full_name?: string
           gender?: string | null
           id?: string
           joining_date?: string | null
+          leave_from?: string | null
+          leave_reason?: string | null
+          leave_to?: string | null
+          monthly_salary_usd?: number
           notes?: string | null
           phone?: string | null
           photo_url?: string | null
@@ -256,6 +279,7 @@ export type Database = {
           room_no?: string | null
           specialization?: string | null
           status?: string
+          telegram_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1721,12 +1745,17 @@ export type Database = {
           age: number | null
           created_at: string
           created_by: string | null
+          day_off: string | null
           department: string | null
+          duty_schedule: Json
           email: string | null
           full_name: string
           gender: string | null
           id: string
           joining_date: string | null
+          leave_from: string | null
+          leave_reason: string | null
+          leave_to: string | null
           monthly_salary_usd: number
           notes: string | null
           phone: string | null
@@ -1734,6 +1763,7 @@ export type Database = {
           position: string
           qualification: string | null
           status: string
+          telegram_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1741,12 +1771,17 @@ export type Database = {
           age?: number | null
           created_at?: string
           created_by?: string | null
+          day_off?: string | null
           department?: string | null
+          duty_schedule?: Json
           email?: string | null
           full_name: string
           gender?: string | null
           id?: string
           joining_date?: string | null
+          leave_from?: string | null
+          leave_reason?: string | null
+          leave_to?: string | null
           monthly_salary_usd?: number
           notes?: string | null
           phone?: string | null
@@ -1754,6 +1789,7 @@ export type Database = {
           position: string
           qualification?: string | null
           status?: string
+          telegram_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1761,12 +1797,17 @@ export type Database = {
           age?: number | null
           created_at?: string
           created_by?: string | null
+          day_off?: string | null
           department?: string | null
+          duty_schedule?: Json
           email?: string | null
           full_name?: string
           gender?: string | null
           id?: string
           joining_date?: string | null
+          leave_from?: string | null
+          leave_reason?: string | null
+          leave_to?: string | null
           monthly_salary_usd?: number
           notes?: string | null
           phone?: string | null
@@ -1774,6 +1815,7 @@ export type Database = {
           position?: string
           qualification?: string | null
           status?: string
+          telegram_id?: string | null
           updated_at?: string
         }
         Relationships: []

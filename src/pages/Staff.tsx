@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +19,13 @@ import { fmtUSD } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   UserPlus, Search, Pencil, Trash2, Stethoscope, FlaskConical, Users,
   Wallet, Phone, Mail, Calendar, Briefcase, GraduationCap, Eye, MapPin, FileText,
+  Send, Upload, Calendar as CalIcon,
 } from "lucide-react";
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const POSITIONS = [
   { value: "lab_technician", label: "Lab Technologist", icon: FlaskConical, color: "bg-slate-100 text-slate-700 border-slate-200" },
@@ -56,12 +59,15 @@ const initials = (name: string) =>
 const emptyForm = {
   id: "" as string | "",
   full_name: "", age: "" as any, gender: "", position: "nurse",
-  department: "", phone: "", email: "", address: "",
+  department: "", phone: "", telegram_id: "", email: "", address: "",
   joining_date: "", monthly_salary_usd: "" as any,
   status: "active", qualification: "", notes: "", photo_url: "",
+  day_off: "", leave_from: "", leave_to: "", leave_reason: "",
+  duty_schedule: {} as Record<string, string>,
 };
 
 export default function Staff() {
+  const { user } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<string>("all");
@@ -69,6 +75,8 @@ export default function Staff() {
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewRow, setViewRow] = useState<any | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     const { data, error } = await (supabase.from("staff_members" as any) as any)
@@ -105,18 +113,41 @@ export default function Staff() {
     setForm({
       id: r.id, full_name: r.full_name ?? "", age: r.age ?? "", gender: r.gender ?? "",
       position: r.position ?? "nurse", department: r.department ?? "",
-      phone: r.phone ?? "", email: r.email ?? "", address: r.address ?? "",
+      phone: r.phone ?? "", telegram_id: r.telegram_id ?? "", email: r.email ?? "", address: r.address ?? "",
       joining_date: r.joining_date ?? "", monthly_salary_usd: r.monthly_salary_usd ?? "",
       status: r.status ?? "active", qualification: r.qualification ?? "",
       notes: r.notes ?? "", photo_url: r.photo_url ?? "",
+      day_off: r.day_off ?? "", leave_from: r.leave_from ?? "", leave_to: r.leave_to ?? "",
+      leave_reason: r.leave_reason ?? "", duty_schedule: r.duty_schedule ?? {},
     });
     setOpen(true);
+  };
+
+  const onPickPhoto = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `staff/${user?.id || "anon"}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("staff-photos").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("staff-photos").getPublicUrl(path);
+      setForm(f => ({ ...f, photo_url: data.publicUrl }));
+      toast.success("Photo uploaded");
+    } catch (e: any) {
+      toast.error(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const setDuty = (day: string, val: string) => {
+    setForm(f => ({ ...f, duty_schedule: { ...(f.duty_schedule || {}), [day]: val } }));
   };
 
   const submit = async () => {
     if (!form.full_name.trim()) return toast.error("Full name is required");
     if (!form.position) return toast.error("Position is required");
-    const { data: u } = await supabase.auth.getUser();
     const payload: any = {
       full_name: form.full_name.trim(),
       age: form.age === "" ? null : Number(form.age),
@@ -124,6 +155,7 @@ export default function Staff() {
       position: form.position,
       department: form.department || null,
       phone: form.phone || null,
+      telegram_id: form.telegram_id || null,
       email: form.email || null,
       address: form.address || null,
       joining_date: form.joining_date || null,
@@ -132,12 +164,17 @@ export default function Staff() {
       qualification: form.qualification || null,
       notes: form.notes || null,
       photo_url: form.photo_url || null,
+      day_off: form.day_off || null,
+      leave_from: form.leave_from || null,
+      leave_to: form.leave_to || null,
+      leave_reason: form.leave_reason || null,
+      duty_schedule: form.duty_schedule || {},
     };
     let error;
     if (form.id) {
       ({ error } = await (supabase.from("staff_members" as any) as any).update(payload).eq("id", form.id));
     } else {
-      payload.created_by = u.user?.id ?? null;
+      payload.created_by = user?.id ?? null;
       ({ error } = await (supabase.from("staff_members" as any) as any).insert(payload));
     }
     if (error) return toast.error(error.message);
@@ -347,10 +384,53 @@ export default function Staff() {
                     <p className="text-[10px] uppercase text-muted-foreground">Status</p>
                     <Badge className={cn("capitalize", viewRow.status === "active" ? "bg-success/15 text-success border-success/30" : "bg-muted text-muted-foreground")}>{viewRow.status}</Badge>
                   </div>
+                  {viewRow.telegram_id && (
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground">Telegram</p>
+                      <p className="flex items-center gap-1.5"><Send className="h-3.5 w-3.5 text-sky-500" />{viewRow.telegram_id}</p>
+                    </div>
+                  )}
+                  {viewRow.day_off && (
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground">Day Off</p>
+                      <p className="flex items-center gap-1.5 text-rose-600"><CalIcon className="h-3.5 w-3.5" />{viewRow.day_off}</p>
+                    </div>
+                  )}
                   <div className="col-span-2">
                     <p className="text-[10px] uppercase text-muted-foreground">Monthly Salary</p>
                     <p className="text-lg font-bold text-primary">{fmtUSD(Number(viewRow.monthly_salary_usd || 0))}</p>
                   </div>
+                  {viewRow.duty_schedule && Object.keys(viewRow.duty_schedule || {}).length > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-[10px] uppercase text-muted-foreground mb-1.5 flex items-center gap-1"><CalIcon className="h-3 w-3" />Duty Calendar</p>
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {DAYS.map(day => {
+                          const slot = (viewRow.duty_schedule || {})[day];
+                          const isOff = viewRow.day_off?.toLowerCase().includes(day.toLowerCase());
+                          return (
+                            <div key={day} className={cn(
+                              "rounded-lg border p-1.5 text-center text-[10px]",
+                              isOff ? "bg-rose-50 border-rose-200 text-rose-600" :
+                                slot ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-muted/30 text-muted-foreground"
+                            )}>
+                              <div className="font-semibold">{day}</div>
+                              <div className="truncate">{isOff ? "Off" : slot || "—"}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {(viewRow.leave_from || viewRow.leave_to) && (
+                    <div className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+                      <p className="text-[10px] uppercase text-amber-700 font-semibold">On Leave</p>
+                      <p className="text-xs text-amber-700/90 mt-0.5">
+                        {viewRow.leave_from && format(new Date(viewRow.leave_from), "PP")}
+                        {viewRow.leave_to && ` → ${format(new Date(viewRow.leave_to), "PP")}`}
+                        {viewRow.leave_reason && ` · ${viewRow.leave_reason}`}
+                      </p>
+                    </div>
+                  )}
                   {viewRow.address && (
                     <div className="col-span-2">
                       <p className="text-[10px] uppercase text-muted-foreground">Address</p>
@@ -378,88 +458,112 @@ export default function Staff() {
 
       {/* ADD / EDIT DIALOG */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit Staff Member" : "Add Staff Member"}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-2 py-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label>Full Name *</Label>
-              <Input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} placeholder="Dr. John Smith" />
-            </div>
-            <div className="space-y-2">
-              <Label>Position *</Label>
-              <Select value={form.position} onValueChange={v => setForm({ ...form, position: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {POSITIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Department</Label>
-              <Input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder="e.g. Cardiology" />
-            </div>
-            <div className="space-y-2">
-              <Label>Age</Label>
-              <Input type="number" min={0} value={form.age} onChange={e => setForm({ ...form, age: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Gender</Label>
-              <Select value={form.gender} onValueChange={v => setForm({ ...form, gender: v })}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Joining Date</Label>
-              <Input type="date" value={form.joining_date} onChange={e => setForm({ ...form, joining_date: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Monthly Salary (USD)</Label>
-              <Input type="number" min={0} step="0.01" value={form.monthly_salary_usd} onChange={e => setForm({ ...form, monthly_salary_usd: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Qualification</Label>
-              <Input value={form.qualification} onChange={e => setForm({ ...form, qualification: e.target.value })} placeholder="MBBS, MD, BSc..." />
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="on_leave">On Leave</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Photo URL</Label>
-              <Input value={form.photo_url} onChange={e => setForm({ ...form, photo_url: e.target.value })} placeholder="https://..." />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Address</Label>
-              <Textarea rows={2} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Notes</Label>
-              <Textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-            </div>
-          </div>
-          <DialogFooter>
+
+          <Tabs defaultValue="basic" className="mt-2">
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="basic">Profile</TabsTrigger>
+              <TabsTrigger value="contact">Contact</TabsTrigger>
+              <TabsTrigger value="duty">Duty & Salary</TabsTrigger>
+              <TabsTrigger value="leave">Leave</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="basic" className="space-y-4 pt-3">
+              <div className="flex items-start gap-4">
+                <div className="flex flex-col items-center gap-2">
+                  <Avatar className="h-24 w-24 ring-2 ring-border">
+                    <AvatarImage src={form.photo_url || undefined} />
+                    <AvatarFallback className={cn("text-xl text-white", avatarColor(form.full_name || "?"))}>
+                      {initials(form.full_name || "?")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => e.target.files?.[0] && onPickPhoto(e.target.files[0])} />
+                  <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                    <Upload className="h-3.5 w-3.5 mr-1" />{uploading ? "Uploading…" : "Upload"}
+                  </Button>
+                </div>
+                <div className="flex-1 grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1 sm:col-span-2"><Label>Full Name *</Label><Input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} /></div>
+                  <div className="space-y-1"><Label>Position *</Label>
+                    <Select value={form.position} onValueChange={v => setForm({ ...form, position: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{POSITIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1"><Label>Department</Label><Input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder="Cardiology" /></div>
+                  <div className="space-y-1"><Label>Qualification</Label><Input value={form.qualification} onChange={e => setForm({ ...form, qualification: e.target.value })} placeholder="MBBS, BSc..." /></div>
+                  <div className="space-y-1"><Label>Age</Label><Input type="number" min={0} value={form.age} onChange={e => setForm({ ...form, age: e.target.value })} /></div>
+                  <div className="space-y-1"><Label>Gender</Label>
+                    <Select value={form.gender} onValueChange={v => setForm({ ...form, gender: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1"><Label>Status</Label>
+                    <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="on_leave">On Leave</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="contact" className="space-y-3 pt-3">
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="flex items-center gap-1"><Phone className="h-3 w-3" />Phone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+                <div className="space-y-1"><Label className="flex items-center gap-1"><Send className="h-3 w-3 text-sky-500" />Telegram ID</Label><Input value={form.telegram_id} onChange={e => setForm({ ...form, telegram_id: e.target.value })} placeholder="@username" /></div>
+                <div className="space-y-1 sm:col-span-2"><Label className="flex items-center gap-1"><Mail className="h-3 w-3" />Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+                <div className="space-y-1 sm:col-span-2"><Label>Address</Label><Textarea rows={2} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="duty" className="space-y-4 pt-3">
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div className="space-y-1"><Label>Monthly Salary (USD)</Label><Input type="number" min={0} step="0.01" value={form.monthly_salary_usd} onChange={e => setForm({ ...form, monthly_salary_usd: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Joining Date</Label><Input type="date" value={form.joining_date} onChange={e => setForm({ ...form, joining_date: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Day Off</Label><Input value={form.day_off} onChange={e => setForm({ ...form, day_off: e.target.value })} placeholder="Friday" /></div>
+              </div>
+              <div>
+                <Label className="flex items-center gap-1 mb-2"><CalIcon className="h-3.5 w-3.5" />Weekly Duty Calendar</Label>
+                <div className="grid grid-cols-7 gap-2">
+                  {DAYS.map(day => (
+                    <div key={day} className="rounded-lg border bg-muted/20 p-2">
+                      <div className="text-[11px] font-semibold text-center mb-1">{day}</div>
+                      <Input
+                        className="h-7 text-[11px] text-center px-1"
+                        value={(form.duty_schedule || {})[day] || ""}
+                        onChange={e => setDuty(day, e.target.value)}
+                        placeholder="9-5"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="leave" className="space-y-3 pt-3">
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1"><Label>Leave From</Label><Input type="date" value={form.leave_from} onChange={e => setForm({ ...form, leave_from: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Leave To</Label><Input type="date" value={form.leave_to} onChange={e => setForm({ ...form, leave_to: e.target.value })} /></div>
+                <div className="space-y-1 sm:col-span-2"><Label>Leave Reason</Label><Textarea rows={2} value={form.leave_reason} onChange={e => setForm({ ...form, leave_reason: e.target.value })} /></div>
+                <div className="space-y-1 sm:col-span-2"><Label>Notes</Label><Textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="mt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={submit} className="clinic-gradient text-primary-foreground">
               {form.id ? "Save Changes" : "Add Staff"}
