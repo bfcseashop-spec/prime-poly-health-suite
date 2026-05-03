@@ -222,6 +222,35 @@ export default function Insurance() {
     });
   }, [items, search, filterTier, filterStatus]);
 
+  const patientMap = useMemo(() => Object.fromEntries(patients.map(p => [p.id, p])), [patients]);
+  const toCardData = (r: Row): CardData => ({
+    card_no: r.card_no,
+    patient_name: r.patient_name,
+    patient_code: r.patient_id ? patientMap[r.patient_id]?.patient_code ?? null : null,
+    tier: r.tier,
+    discount_percent: Number(r.discount_percent),
+    coverage_amount_usd: Number(r.coverage_amount_usd),
+    used_amount_usd: Number(r.used_amount_usd),
+    provider: r.provider,
+    valid_from: r.valid_from,
+    valid_to: r.valid_to,
+    status: r.status,
+  });
+
+  const handleScan = () => {
+    const code = scanInput.trim();
+    if (!code) return;
+    const found = items.find(i => i.card_no.toLowerCase() === code.toLowerCase());
+    if (!found) {
+      toast({ title: "Card not found", description: code, variant: "destructive" });
+      return;
+    }
+    setScanInput("");
+    setScanOpen(false);
+    setPreviewCard(found);
+    toast({ title: "Card matched", description: `${found.patient_name ?? ""} • ${TIER_CONFIG[found.tier].label} • ${Number(found.discount_percent)}% discount` });
+  };
+
   const stats = useMemo(() => {
     const total = items.length;
     const active = items.filter((i) => i.status === "active").length;
@@ -237,7 +266,10 @@ export default function Insurance() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Insurance Cards</h1>
           <p className="text-muted-foreground mt-1">Issue and manage patient insurance cards with tier-based discounts</p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" /> Issue New Card</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setScanOpen(true)} className="gap-2"><ScanBarcode className="h-4 w-4" />Scan Card</Button>
+          <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" /> Issue New Card</Button>
+        </div>
       </div>
 
       {/* Stats */}
