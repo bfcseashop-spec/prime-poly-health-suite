@@ -24,9 +24,18 @@ const CATS = ["hematology", "biochemistry", "endocrinology", "urinalysis", "micr
 const PRIORITIES = [{ v: "normal", l: "Normal" }, { v: "urgent", l: "Urgent" }, { v: "stat", l: "STAT" }];
 const FLAGS = [{ v: "normal", l: "Normal", c: "bg-success/15 text-success border-success/30" }, { v: "low", l: "Low", c: "bg-blue-500/15 text-blue-600 border-blue-500/30" }, { v: "high", l: "High", c: "bg-warning/15 text-warning border-warning/30" }, { v: "critical", l: "Critical", c: "bg-destructive/15 text-destructive border-destructive/30" }];
 
+const ageOf = (dob?: string | null) => {
+  if (!dob) return null;
+  const d = new Date(dob); if (isNaN(+d)) return null;
+  const diff = Date.now() - d.getTime();
+  return Math.floor(diff / (365.25 * 24 * 3600 * 1000));
+};
+
 export default function Laboratory() {
   const { user } = useAuth();
   const [tab, setTab] = useState("orders");
+  const [viewTest, setViewTest] = useState<Test | null>(null);
+  const [barcodeTest, setBarcodeTest] = useState<Test | null>(null);
 
   // Catalog
   const [tests, setTests] = useState<Test[]>([]);
