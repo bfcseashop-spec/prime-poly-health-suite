@@ -328,6 +328,17 @@ export default function Investment() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Investment Dashboard</h1>
           <p className="text-muted-foreground mt-1 text-sm">Capital, shares & contribution tracking</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setInvestorMgrOpen(true)}>
+            <Users className="h-4 w-4 mr-1" />Manage Investors
+          </Button>
+          <Button variant="outline" onClick={() => setCatMgrOpen(true)}>
+            <Tag className="h-4 w-4 mr-1" />Manage Categories
+          </Button>
+          <Button onClick={() => openNewC()} className="clinic-gradient text-primary-foreground">
+            <Plus className="h-4 w-4 mr-1" />Add Investment
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}
