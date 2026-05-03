@@ -11,13 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { FlaskConical, Plus, Search, TestTube, ClipboardList, Beaker, FileText, Trash2, Upload, Printer, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { FlaskConical, Plus, Search, TestTube, ClipboardList, Beaker, FileText, Trash2, Upload, Printer, CheckCircle2, AlertCircle, Clock, Eye, Pencil, Barcode as BarcodeIcon, User } from "lucide-react";
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
+import Barcode from "react-barcode";
 
 type Test = { id: string; code: string; name: string; category: string; sample_type: string | null; unit: string | null; reference_range: string | null; price_usd: number; turnaround_hours: number | null; active: boolean };
-type Patient = { id: string; full_name: string; patient_code: string; phone: string | null };
+type Patient = { id: string; full_name: string; patient_code: string; phone: string | null; dob: string | null; gender: string | null };
 
 const CATS = ["hematology", "biochemistry", "endocrinology", "urinalysis", "microbiology", "serology", "immunology", "general"];
 const PRIORITIES = [{ v: "normal", l: "Normal" }, { v: "urgent", l: "Urgent" }, { v: "stat", l: "STAT" }];
