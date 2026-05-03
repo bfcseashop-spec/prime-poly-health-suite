@@ -11,6 +11,7 @@ const main: Item[] = [
   { title: "Patients", url: "/patients", icon: Users, roles: ["admin","doctor","nurse","receptionist","accountant"] },
   { title: "OPD Queue", url: "/opd", icon: Stethoscope, roles: ["admin","doctor","nurse","receptionist"] },
   { title: "Prescriptions", url: "/prescriptions", icon: FileText, roles: ["admin","doctor"] },
+  { title: "Medicines", url: "/medicines", icon: PillBottle, roles: ["admin","pharmacist"] },
   { title: "POS / Billing", url: "/pos", icon: Receipt, roles: ["admin","pharmacist","receptionist","accountant"] },
   { title: "Due Management", url: "/due-management", icon: CreditCard, roles: ["admin","accountant","receptionist","pharmacist"] },
   { title: "Invoice History", url: "/invoices", icon: History, roles: ["admin","accountant","receptionist","pharmacist"] },
