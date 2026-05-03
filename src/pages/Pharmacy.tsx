@@ -83,8 +83,9 @@ export default function Pharmacy() {
     if (cart.length === 0) return toast.error("Cart is empty");
     const { data: invData } = await supabase.rpc("generate_invoice_no" as any);
     const invoice = invData ?? `INV-${Date.now()}`;
+    const totalDiscount = discount + insuranceDiscount;
     const { data: sale, error } = await supabase.from("medicine_sales").insert({
-      invoice_no: invoice, patient_id: patientId, subtotal_usd: subtotal, discount_usd: discount,
+      invoice_no: invoice, patient_id: patientId, subtotal_usd: subtotal, discount_usd: totalDiscount,
       total_usd: total, payment_method: payment, cashier_id: user?.id,
     }).select().single();
     if (error || !sale) return toast.error(error?.message ?? "Failed");
@@ -95,9 +96,16 @@ export default function Pharmacy() {
       const m = meds.find(x => x.id === c.medicine_id);
       if (m) await supabase.from("medicines").update({ stock: m.stock - c.quantity }).eq("id", c.medicine_id);
     }
+    // accumulate used amount on insurance card
+    if (insuranceCard && insuranceDiscount > 0) {
+      await supabase.from("insurance_cards" as any).update({
+        used_amount_usd: Number(insuranceCard.used_amount_usd ?? 0) + insuranceDiscount,
+      }).eq("id", insuranceCard.id);
+    }
     toast.success(`Sale completed — ${invoice}`);
-    printReceipt({ invoice, items: cart, subtotal, discount, total, payment, patient: patients.find(p => p.id === patientId) });
-    setCart([]); setDiscount(0); setPatientId(undefined); load();
+    printReceipt({ invoice, items: cart, subtotal, discount: totalDiscount, total, payment, patient: patients.find(p => p.id === patientId) });
+    setCart([]); setDiscount(0); setPatientId(undefined); setInsuranceCard(null); load();
+  };
   };
 
   const printReceipt = (r: any) => {
