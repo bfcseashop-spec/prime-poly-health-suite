@@ -167,15 +167,17 @@ export default function Investment() {
   const CATEGORIES = useMemo(() => categories.map(c => c.name), [categories]);
 
   const load = async () => {
-    const [s, c, cat] = await Promise.all([
+    const [s, c, cat, inv] = await Promise.all([
       (supabase.from("shareholders" as any) as any).select("*").order("created_at"),
       (supabase.from("shareholder_contributions" as any) as any).select("*").order("paid_on", { ascending: false }),
       (supabase.from("investment_categories" as any) as any).select("*").order("name"),
+      (supabase.from("investments" as any) as any).select("*").order("created_at"),
     ]);
     if (s.error) toast.error(s.error.message);
     setShareholders(s.data ?? []);
     setContributions(c.data ?? []);
     setCategories(cat.data ?? []);
+    setInvestments(inv.data ?? []);
   };
   useEffect(() => { load(); }, []);
 
