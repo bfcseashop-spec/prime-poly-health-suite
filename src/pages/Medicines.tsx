@@ -425,38 +425,105 @@ export default function Medicines() {
               </div>
             </div>
 
-            {/* Pricing - auto-calc */}
+            {/* Pricing - simple purchase unit based */}
             <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4 space-y-4">
-              <h3 className="text-sm font-semibold text-primary">💰 Pricing — auto-calculates per piece</h3>
+              <h3 className="text-sm font-semibold text-primary">💰 Purchase — pick a unit, enter price, per-piece auto-calculates</h3>
 
-              {/* Cost row */}
-              <div>
-                <Label className="text-xs uppercase text-muted-foreground">Purchase / Cost Price</Label>
-                <div className="grid grid-cols-4 gap-3 mt-1">
-                  <div><Label className="text-xs">Per Pcs *</Label><Input type="number" step="0.01" value={form.cost_price_usd} onChange={e => updatePerUnit("cost_price_usd", e.target.value)} /></div>
-                  <div><Label className="text-xs">Strip ({form.units_per_strip || "?"})</Label><Input type="number" step="0.01" value={form.strip_cost_usd} onChange={e => updatePack("strip_cost_usd", e.target.value, form.units_per_strip, "cost")} /></div>
-                  <div><Label className="text-xs">Packet ({form.units_per_packet || "?"})</Label><Input type="number" step="0.01" value={form.packet_cost_usd} onChange={e => updatePack("packet_cost_usd", e.target.value, form.units_per_packet, "cost")} /></div>
-                  <div><Label className="text-xs">Box ({form.units_per_box || "?"})</Label><Input type="number" step="0.01" value={form.box_cost_usd} onChange={e => updatePack("box_cost_usd", e.target.value, form.units_per_box, "cost")} /></div>
+              <div className="grid grid-cols-3 gap-3 items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Purchase Unit</Label>
+                  <Select value={form.purchase_unit} onValueChange={v => setForm({ ...form, purchase_unit: v, purchase_pack_price: "", cost_price_usd: v === "Pcs" ? form.cost_price_usd : "" })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pcs">Pcs (single)</SelectItem>
+                      <SelectItem value="Strip">Strip / পাতা</SelectItem>
+                      <SelectItem value="Packet">Packet</SelectItem>
+                      <SelectItem value="Box">Box</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.purchase_unit !== "Pcs" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Pcs in 1 {form.purchase_unit} *</Label>
+                    <Input
+                      type="number"
+                      value={
+                        form.purchase_unit === "Box" ? form.units_per_box :
+                        form.purchase_unit === "Packet" ? form.units_per_packet :
+                        form.units_per_strip
+                      }
+                      onChange={e => {
+                        const v = e.target.value;
+                        const key = form.purchase_unit === "Box" ? "units_per_box" : form.purchase_unit === "Packet" ? "units_per_packet" : "units_per_strip";
+                        const next: any = { ...form, [key]: v };
+                        const price = Number(form.purchase_pack_price || 0);
+                        const u = Number(v || 0);
+                        if (price && u) next.cost_price_usd = (price / u).toFixed(4);
+                        setForm(next);
+                      }}
+                      placeholder={form.purchase_unit === "Box" ? "100" : form.purchase_unit === "Packet" ? "20" : "10"}
+                    />
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">
+                    {form.purchase_unit === "Pcs" ? "Cost / Pcs *" : `Total Cost per ${form.purchase_unit} *`}
+                  </Label>
+                  <Input
+                    type="number" step="0.01"
+                    value={form.purchase_unit === "Pcs" ? form.cost_price_usd : form.purchase_pack_price}
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (form.purchase_unit === "Pcs") {
+                        setForm({ ...form, cost_price_usd: v, purchase_pack_price: v });
+                      } else {
+                        const u = Number(
+                          form.purchase_unit === "Box" ? form.units_per_box :
+                          form.purchase_unit === "Packet" ? form.units_per_packet :
+                          form.units_per_strip || 0
+                        );
+                        const next: any = { ...form, purchase_pack_price: v };
+                        if (u && Number(v)) next.cost_price_usd = (Number(v) / u).toFixed(4);
+                        setForm(next);
+                      }
+                    }}
+                    placeholder="20.00"
+                  />
                 </div>
               </div>
 
-              {/* Sale row */}
-              <div>
-                <Label className="text-xs uppercase text-muted-foreground">Sale Price</Label>
-                <div className="grid grid-cols-4 gap-3 mt-1">
+              {form.purchase_unit !== "Pcs" && form.cost_price_usd && Number(form.cost_price_usd) > 0 && (
+                <div className="rounded-md bg-background border border-primary/30 p-3 text-sm">
+                  <span className="text-muted-foreground">✨ Auto cost per piece: </span>
+                  <span className="font-bold text-primary text-base">{fmtUSD(Number(form.cost_price_usd))}</span>
+                  {form.purchase_pack_price && (
+                    <span className="text-muted-foreground ml-2">
+                      ({fmtUSD(Number(form.purchase_pack_price))} ÷ {
+                        form.purchase_unit === "Box" ? form.units_per_box :
+                        form.purchase_unit === "Packet" ? form.units_per_packet :
+                        form.units_per_strip
+                      } pcs)
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <div className="border-t pt-3">
+                <Label className="text-xs uppercase text-muted-foreground">Sale Price (set manually based on cost)</Label>
+                <div className="grid grid-cols-4 gap-3 mt-2">
                   <div><Label className="text-xs">Per Pcs *</Label><Input type="number" step="0.01" value={form.price_usd} onChange={e => updatePerUnit("price_usd", e.target.value)} /></div>
-                  <div><Label className="text-xs">Strip</Label><Input type="number" step="0.01" value={form.strip_price_usd} onChange={e => updatePack("strip_price_usd", e.target.value, form.units_per_strip, "price")} /></div>
-                  <div><Label className="text-xs">Packet</Label><Input type="number" step="0.01" value={form.packet_price_usd} onChange={e => updatePack("packet_price_usd", e.target.value, form.units_per_packet, "price")} /></div>
-                  <div><Label className="text-xs">Box</Label><Input type="number" step="0.01" value={form.box_price_usd} onChange={e => updatePack("box_price_usd", e.target.value, form.units_per_box, "price")} /></div>
+                  <div><Label className="text-xs">Strip {form.units_per_strip ? `(${form.units_per_strip})` : ""}</Label><Input type="number" step="0.01" value={form.strip_price_usd} onChange={e => updatePack("strip_price_usd", e.target.value, form.units_per_strip, "price")} /></div>
+                  <div><Label className="text-xs">Packet {form.units_per_packet ? `(${form.units_per_packet})` : ""}</Label><Input type="number" step="0.01" value={form.packet_price_usd} onChange={e => updatePack("packet_price_usd", e.target.value, form.units_per_packet, "price")} /></div>
+                  <div><Label className="text-xs">Box {form.units_per_box ? `(${form.units_per_box})` : ""}</Label><Input type="number" step="0.01" value={form.box_price_usd} onChange={e => updatePack("box_price_usd", e.target.value, form.units_per_box, "price")} /></div>
                 </div>
               </div>
 
-              {form.cost_price_usd && form.price_usd && (
+              {form.cost_price_usd && form.price_usd && Number(form.cost_price_usd) > 0 && (
                 <p className="text-xs text-success font-medium">
                   Profit / pcs: {fmtUSD(Number(form.price_usd) - Number(form.cost_price_usd))} ({(((Number(form.price_usd) - Number(form.cost_price_usd)) / Number(form.cost_price_usd)) * 100).toFixed(0)}% margin)
                 </p>
               )}
-              <p className="text-[11px] text-muted-foreground">💡 Tip: enter Box/Strip/Packet price → per-piece auto fills. Or enter per piece → packs auto fill.</p>
+              <p className="text-[11px] text-muted-foreground">💡 Example: Box select → 10 pcs/box → Cost $20 → per pcs auto = $2.00. Sale price manually set kor.</p>
             </div>
 
             <div>
