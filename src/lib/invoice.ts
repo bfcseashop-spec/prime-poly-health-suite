@@ -29,7 +29,23 @@ export type InvoiceData = {
 export const buildInvoiceHTML = (r: InvoiceData, compact = false) => {
   const dateStr = new Date(r.created_at || Date.now()).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
   const primaryMethod = (r.splits && r.splits[0]?.method) || "—";
-  const rows = r.items.map((i, idx) => `
+  // Group all medicine items into a single "Medication" row (total qty & total price), keep others as-is
+  const meds = r.items.filter(i => (i.item_type ?? "medicine") === "medicine");
+  const others = r.items.filter(i => (i.item_type ?? "medicine") !== "medicine");
+  const grouped: InvoiceItem[] = [];
+  if (meds.length > 0) {
+    const totalQty = meds.reduce((a, m) => a + Number(m.quantity || 0), 0);
+    const totalAmt = meds.reduce((a, m) => a + Number(m.quantity || 0) * Number(m.price_usd || 0), 0);
+    grouped.push({
+      name: "Medication",
+      description: null,
+      item_type: "medicine",
+      quantity: totalQty,
+      price_usd: totalQty > 0 ? totalAmt / totalQty : 0,
+    });
+  }
+  const displayItems = [...grouped, ...others];
+  const rows = displayItems.map((i, idx) => `
     <tr>
       <td class="c sl">${String(idx + 1).padStart(2, "0")}</td>
       <td><div class="iname">${i.name}</div>${i.description ? `<div class="isub">${i.description}</div>` : i.item_type ? `<div class="isub">${i.item_type}</div>` : ""}</td>
