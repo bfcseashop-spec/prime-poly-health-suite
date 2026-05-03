@@ -442,6 +442,36 @@ export type Database = {
           },
         ]
       }
+      patient_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          file_url: string
+          id: string
+          patient_id: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          file_url: string
+          id?: string
+          patient_id: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          file_url?: string
+          id?: string
+          patient_id?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
