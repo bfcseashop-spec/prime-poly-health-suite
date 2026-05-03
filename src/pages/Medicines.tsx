@@ -349,6 +349,7 @@ export default function Medicines() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setOptDlg(true)}><Settings2 className="h-4 w-4 mr-2" />Units / Categories</Button>
+          <Button variant="outline" onClick={() => downloadTemplate(TEMPLATE_HEADERS, "medicines_import_template", { name: "Paracetamol 500mg", generic_name: "Paracetamol", brand: "Square", category: "Tablet", supplier: "ABC Pharma", barcode: "1000001", strip_barcode: "1000002", packet_barcode: "", box_barcode: "1000003", unit: "Pcs", units_per_strip: 10, units_per_packet: "", units_per_box: 100, cost_price_usd: 0.05, price_usd: 0.10, strip_price_usd: 1.00, box_price_usd: 10.00, stock: 100, low_stock_threshold: 20, expiry_date: "2026-12-31", image_url: "" })}><Download className="h-4 w-4 mr-2" />Template</Button>
           <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4 mr-2" />Import</Button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" hidden onChange={e => e.target.files?.[0] && handleImport(e.target.files[0])} />
           <Button variant="outline" onClick={() => exportToExcel(meds, "medicines")}><Download className="h-4 w-4 mr-2" />Export XLSX</Button>
