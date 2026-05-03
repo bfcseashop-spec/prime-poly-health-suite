@@ -834,10 +834,7 @@ export default function Investment() {
               <Button variant="outline" size="sm" className="h-9" onClick={exportCSV}>
                 <Download className="h-4 w-4 mr-1" />Export
               </Button>
-              <Button size="sm" variant="outline" className="h-9" onClick={() => openRecord()}>
-                <Receipt className="h-4 w-4 mr-1" />Record
-              </Button>
-              <Button size="sm" className="h-9 clinic-gradient text-primary-foreground" onClick={() => openNewC()}>
+              <Button size="sm" className="h-9 clinic-gradient text-primary-foreground" onClick={() => openRecord()}>
                 <Plus className="h-4 w-4 mr-1" />Add
               </Button>
             </div>
