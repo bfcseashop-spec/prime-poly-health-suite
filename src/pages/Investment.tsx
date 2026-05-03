@@ -520,56 +520,80 @@ export default function Investment() {
           <Button variant="outline" onClick={() => setCatMgrOpen(true)}>
             <Tag className="h-4 w-4 mr-1" />Manage Categories
           </Button>
-          <Button onClick={() => openNewC()} className="clinic-gradient text-primary-foreground">
-            <Plus className="h-4 w-4 mr-1" />Add Investment
-          </Button>
         </div>
       </div>
 
       {/* INVESTMENTS LIST */}
-      <Card className="shadow-soft">
-        <CardContent className="p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-bold text-sm">Investments</p>
-              <p className="text-xs text-muted-foreground">{investments.length} total · drives share % calculations</p>
+      <Card className="shadow-soft overflow-hidden border-2">
+        <div className="px-5 py-4 border-b bg-gradient-to-r from-primary/5 via-primary/[0.02] to-transparent flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <PiggyBank className="h-5 w-5 text-primary" />
             </div>
-            <Button size="sm" onClick={() => openNewC()} className="clinic-gradient text-primary-foreground">
-              <Plus className="h-3.5 w-3.5 mr-1" />Add Investment
-            </Button>
+            <div>
+              <p className="font-bold text-base leading-tight">Investments</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {investments.length} {investments.length === 1 ? "plan" : "plans"} · drives share % calculations
+              </p>
+            </div>
           </div>
+          <Button size="sm" onClick={() => openNewC()} className="clinic-gradient text-primary-foreground shadow-md h-9">
+            <Plus className="h-4 w-4 mr-1" />Add Investment
+          </Button>
+        </div>
+        <CardContent className="p-5">
           {investments.length === 0 ? (
-            <div className="text-center text-xs text-muted-foreground py-6 border-2 border-dashed rounded-lg">
-              No investments yet — click "Add Investment" to begin.
+            <div className="text-center py-10 border-2 border-dashed rounded-xl">
+              <PiggyBank className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm font-medium text-muted-foreground">No investments yet</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Click "Add Investment" to create your first plan</p>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {investments.map((inv: any) => {
                 const paid = contributions
                   .filter((c: any) => (c.investment_name || "Capital Amount Investment") === inv.name)
                   .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
                 const total = Number(inv.total_amount_usd || 0);
                 const due = Math.max(0, total - paid);
+                const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
+                const isPaid = pct >= 100;
                 return (
-                  <div key={inv.id} className="rounded-xl border-2 p-4 hover:border-primary/40 transition-colors bg-background">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">{inv.name}</p>
-                        <p className="text-success font-bold mt-1">{fmtUSD(total)}</p>
-                        <Badge variant="outline" className="mt-1.5 text-[10px] bg-success/10 text-success border-success/30">active</Badge>
+                  <div
+                    key={inv.id}
+                    className="group relative rounded-xl border-2 bg-background p-4 hover:border-primary/50 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold truncate text-sm" title={inv.name}>{inv.name}</p>
+                        <p className="text-lg font-bold text-success mt-0.5 tabular-nums">{fmtUSD(total)}</p>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditInvestment(inv)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteCId(inv.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[10px] shrink-0",
+                          isPaid
+                            ? "bg-success/10 text-success border-success/30"
+                            : "bg-warning/10 text-warning border-warning/30"
+                        )}
+                      >
+                        {isPaid ? "Paid" : "Active"}
+                      </Badge>
                     </div>
-                    <div className="mt-3 pt-3 border-t flex justify-between text-xs">
-                      <span className="text-muted-foreground">Paid: <span className="text-foreground font-semibold">{fmtUSD(paid)}</span></span>
-                      <span className="text-muted-foreground">Due: <span className="text-warning font-semibold">{fmtUSD(due)}</span></span>
+
+                    <Progress value={pct} className="h-1.5 mb-2" />
+                    <div className="flex justify-between text-[11px] mb-3">
+                      <span className="text-muted-foreground">Paid <span className="text-foreground font-semibold tabular-nums">{fmtUSD(paid)}</span></span>
+                      <span className="text-muted-foreground">Due <span className="text-warning font-semibold tabular-nums">{fmtUSD(due)}</span></span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-2 border-t opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button size="sm" variant="ghost" className="h-7 flex-1 text-xs" onClick={() => openEditInvestment(inv)}>
+                        <Pencil className="h-3 w-3 mr-1" />Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 flex-1 text-xs text-destructive hover:text-destructive" onClick={() => setDeleteCId(inv.id)}>
+                        <Trash2 className="h-3 w-3 mr-1" />Delete
+                      </Button>
                     </div>
                   </div>
                 );
