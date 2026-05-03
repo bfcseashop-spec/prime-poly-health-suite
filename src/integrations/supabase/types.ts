@@ -185,6 +185,81 @@ export type Database = {
         }
         Relationships: []
       }
+      doctors: {
+        Row: {
+          available_days: string | null
+          available_hours: string | null
+          bio: string | null
+          consultation_fee_usd: number
+          created_at: string
+          created_by: string | null
+          department: string | null
+          email: string | null
+          experience_years: number | null
+          full_name: string
+          gender: string | null
+          id: string
+          joining_date: string | null
+          notes: string | null
+          phone: string | null
+          photo_url: string | null
+          qualification: string | null
+          registration_no: string | null
+          room_no: string | null
+          specialization: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          available_days?: string | null
+          available_hours?: string | null
+          bio?: string | null
+          consultation_fee_usd?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email?: string | null
+          experience_years?: number | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          joining_date?: string | null
+          notes?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          qualification?: string | null
+          registration_no?: string | null
+          room_no?: string | null
+          specialization?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          available_days?: string | null
+          available_hours?: string | null
+          bio?: string | null
+          consultation_fee_usd?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email?: string | null
+          experience_years?: number | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          joining_date?: string | null
+          notes?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          qualification?: string | null
+          registration_no?: string | null
+          room_no?: string | null
+          specialization?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount_usd: number

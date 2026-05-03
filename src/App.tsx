@@ -29,6 +29,7 @@ import IPD from "./pages/IPD";
 import Staff from "./pages/Staff";
 import Investment from "./pages/Investment";
 import BankTransactions from "./pages/BankTransactions";
+import Doctors from "./pages/Doctors";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/staff" element={<ProtectedRoute roles={["admin"]}><AppLayout><Staff /></AppLayout></ProtectedRoute>} />
               <Route path="/investment" element={<ProtectedRoute roles={["admin"]}><AppLayout><Investment /></AppLayout></ProtectedRoute>} />
               <Route path="/bank-transactions" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><BankTransactions /></AppLayout></ProtectedRoute>} />
+              <Route path="/doctors" element={<Shell><Doctors /></Shell>} />
               <Route path="/settings" element={<Shell><SettingsPage /></Shell>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
