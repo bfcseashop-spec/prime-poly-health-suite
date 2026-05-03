@@ -29,6 +29,7 @@ import IPD from "./pages/IPD";
 import Staff from "./pages/Staff";
 import Investment from "./pages/Investment";
 import BankTransactions from "./pages/BankTransactions";
+import Doctors from "./pages/Doctors";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
