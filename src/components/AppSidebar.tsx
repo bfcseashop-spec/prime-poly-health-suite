@@ -26,6 +26,7 @@ const future: Item[] = [
   { title: "Insurance", url: "/insurance", icon: ShieldCheck, roles: ["admin","accountant","receptionist"] },
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["admin","accountant"] },
   { title: "Staff", url: "/staff", icon: UserCog, roles: ["admin"] },
+  { title: "Investment", url: "/investment", icon: TrendingUp, roles: ["admin"] },
 ];
 
 export function AppSidebar() {
