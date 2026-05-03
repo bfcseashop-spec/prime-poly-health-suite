@@ -34,20 +34,30 @@ export default function Services() {
   // Services
   const [services, setServices] = useState<Service[]>([]);
   const [svcQ, setSvcQ] = useState("");
+  const [svcCat, setSvcCat] = useState("all");
+  const [svcStatus, setSvcStatus] = useState("all");
   const [svcDlg, setSvcDlg] = useState<Partial<Service> | null>(null);
+  const [svcSel, setSvcSel] = useState<Set<string>>(new Set());
 
   // Injections
   const [injs, setInjs] = useState<Injection[]>([]);
   const [injQ, setInjQ] = useState("");
+  const [injRoute, setInjRoute] = useState("all");
+  const [injStatus, setInjStatus] = useState("all");
+  const [injStock, setInjStock] = useState("all");
   const [injDlg, setInjDlg] = useState<Partial<Injection> | null>(null);
+  const [injSel, setInjSel] = useState<Set<string>>(new Set());
 
   // Packages
   const [packages, setPackages] = useState<HPackage[]>([]);
   const [pkgItems, setPkgItems] = useState<Record<string, PItem[]>>({});
   const [pkgQ, setPkgQ] = useState("");
+  const [pkgCat, setPkgCat] = useState("all");
+  const [pkgStatus, setPkgStatus] = useState("all");
   const [pkgDlg, setPkgDlg] = useState<Partial<HPackage> | null>(null);
   const [pkgDlgItems, setPkgDlgItems] = useState<PItem[]>([]);
   const [viewPkg, setViewPkg] = useState<HPackage | null>(null);
+  const [pkgSel, setPkgSel] = useState<Set<string>>(new Set());
 
   // For package builder
   const [labTests, setLabTests] = useState<LabTest[]>([]);
@@ -73,8 +83,15 @@ export default function Services() {
   };
   useEffect(() => { loadAll(); }, []);
 
-  // Service ops
-  const fServices = useMemo(() => services.filter(s => !svcQ || s.name.toLowerCase().includes(svcQ.toLowerCase()) || s.category.toLowerCase().includes(svcQ.toLowerCase())), [services, svcQ]);
+  // ===== Services =====
+  const fServices = useMemo(() => services.filter(s => {
+    const q = svcQ.toLowerCase();
+    const okQ = !q || s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q) || (s.description ?? "").toLowerCase().includes(q);
+    const okC = svcCat === "all" || s.category === svcCat;
+    const okS = svcStatus === "all" || (svcStatus === "active" ? s.active : !s.active);
+    return okQ && okC && okS;
+  }), [services, svcQ, svcCat, svcStatus]);
+
   const saveService = async () => {
     if (!svcDlg?.name) return toast.error("Name required");
     const payload: any = { name: svcDlg.name, category: svcDlg.category ?? "service", price_usd: Number(svcDlg.price_usd ?? 0), description: svcDlg.description ?? null, active: svcDlg.active ?? true };
@@ -88,9 +105,41 @@ export default function Services() {
     if (error) return toast.error(error.message);
     toast.success("Deleted"); loadAll();
   };
+  const bulkDelServices = async () => {
+    if (!svcSel.size) return;
+    if (!confirm(`Delete ${svcSel.size} services?`)) return;
+    const { error } = await supabase.from("service_catalog").delete().in("id", Array.from(svcSel));
+    if (error) return toast.error(error.message);
+    toast.success("Deleted"); setSvcSel(new Set()); loadAll();
+  };
+  const importServices = async (file: File) => {
+    try {
+      const rows = await parseImportFile(file);
+      if (!rows.length) return toast.error("Empty file");
+      const payload = rows.map((r: any) => ({
+        name: String(r.name ?? r.Name ?? "").trim(),
+        category: String(r.category ?? r.Category ?? "service").toLowerCase(),
+        price_usd: Number(r.price_usd ?? r.price ?? r.Price ?? 0),
+        description: r.description ?? r.Description ?? null,
+        active: r.active === undefined ? true : (String(r.active).toLowerCase() === "true" || r.active === 1),
+      })).filter(r => r.name);
+      if (!payload.length) return toast.error("No valid rows (name required)");
+      const { error } = await supabase.from("service_catalog").insert(payload);
+      if (error) return toast.error(error.message);
+      toast.success(`Imported ${payload.length} services`); loadAll();
+    } catch (e: any) { toast.error(e.message ?? "Import failed"); }
+  };
 
-  // Injection ops
-  const fInjs = useMemo(() => injs.filter(i => !injQ || i.name.toLowerCase().includes(injQ.toLowerCase()) || (i.brand ?? "").toLowerCase().includes(injQ.toLowerCase())), [injs, injQ]);
+  // ===== Injections =====
+  const fInjs = useMemo(() => injs.filter(i => {
+    const q = injQ.toLowerCase();
+    const okQ = !q || i.name.toLowerCase().includes(q) || (i.brand ?? "").toLowerCase().includes(q) || (i.dose ?? "").toLowerCase().includes(q);
+    const okR = injRoute === "all" || i.route === injRoute;
+    const okS = injStatus === "all" || (injStatus === "active" ? i.active : !i.active);
+    const okSt = injStock === "all" || (injStock === "low" ? i.stock < 5 : injStock === "out" ? i.stock === 0 : i.stock >= 5);
+    return okQ && okR && okS && okSt;
+  }), [injs, injQ, injRoute, injStatus, injStock]);
+
   const saveInj = async () => {
     if (!injDlg?.name) return toast.error("Name required");
     const payload: any = { name: injDlg.name, brand: injDlg.brand ?? null, dose: injDlg.dose ?? null, route: injDlg.route ?? null, category: injDlg.category ?? "general", price_usd: Number(injDlg.price_usd ?? 0), stock: Number(injDlg.stock ?? 0), description: injDlg.description ?? null, active: injDlg.active ?? true };
@@ -104,9 +153,53 @@ export default function Services() {
     if (error) return toast.error(error.message);
     toast.success("Deleted"); loadAll();
   };
+  const bulkDelInjs = async () => {
+    if (!injSel.size) return;
+    if (!confirm(`Delete ${injSel.size} injections?`)) return;
+    const { error } = await supabase.from("injections" as any).delete().in("id", Array.from(injSel));
+    if (error) return toast.error(error.message);
+    toast.success("Deleted"); setInjSel(new Set()); loadAll();
+  };
+  const importInjections = async (file: File) => {
+    try {
+      const rows = await parseImportFile(file);
+      const payload = rows.map((r: any) => ({
+        name: String(r.name ?? r.Name ?? "").trim(),
+        brand: r.brand ?? r.Brand ?? null,
+        dose: r.dose ?? r.Dose ?? null,
+        route: r.route ?? r.Route ?? null,
+        category: r.category ?? "general",
+        price_usd: Number(r.price_usd ?? r.price ?? 0),
+        stock: Number(r.stock ?? 0),
+        description: r.description ?? null,
+        active: r.active === undefined ? true : (String(r.active).toLowerCase() === "true" || r.active === 1),
+      })).filter(r => r.name);
+      if (!payload.length) return toast.error("No valid rows");
+      const { error } = await supabase.from("injections" as any).insert(payload);
+      if (error) return toast.error(error.message);
+      toast.success(`Imported ${payload.length} injections`); loadAll();
+    } catch (e: any) { toast.error(e.message ?? "Import failed"); }
+  };
 
-  // Package ops
-  const fPkgs = useMemo(() => packages.filter(p => !pkgQ || p.name.toLowerCase().includes(pkgQ.toLowerCase()) || p.category.toLowerCase().includes(pkgQ.toLowerCase())), [packages, pkgQ]);
+  const printInjBarcodes = (ids?: string[]) => {
+    const list = ids ? injs.filter(i => ids.includes(i.id)) : injs.filter(i => injSel.has(i.id));
+    if (!list.length) return toast.error("Select at least one");
+    printBarcodes(list.map(i => ({ code: i.id.slice(0, 12).toUpperCase(), name: `${i.name}${i.dose ? ` ${i.dose}` : ""}`, price: i.price_usd })), "Injection Barcodes");
+  };
+  const printSvcBarcodes = (ids?: string[]) => {
+    const list = ids ? services.filter(s => ids.includes(s.id)) : services.filter(s => svcSel.has(s.id));
+    if (!list.length) return toast.error("Select at least one");
+    printBarcodes(list.map(s => ({ code: s.id.slice(0, 12).toUpperCase(), name: s.name, price: s.price_usd })), "Service Barcodes");
+  };
+
+  // ===== Packages =====
+  const fPkgs = useMemo(() => packages.filter(p => {
+    const q = pkgQ.toLowerCase();
+    const okQ = !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || (p.code ?? "").toLowerCase().includes(q);
+    const okC = pkgCat === "all" || p.category === pkgCat;
+    const okS = pkgStatus === "all" || (pkgStatus === "active" ? p.active : !p.active);
+    return okQ && okC && okS;
+  }), [packages, pkgQ, pkgCat, pkgStatus]);
 
   const openPkgDlg = (p?: HPackage) => {
     if (p) {
