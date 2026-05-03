@@ -104,13 +104,18 @@ export default function PatientProfile() {
         ))}
       </div>
 
-      <Tabs defaultValue="visits">
-        <TabsList>
+      <Tabs defaultValue="records">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="records"><ClipboardList className="h-4 w-4 mr-1" />Medical Records</TabsTrigger>
+          <TabsTrigger value="lab"><FlaskConical className="h-4 w-4 mr-1" />Lab Reports</TabsTrigger>
           <TabsTrigger value="visits">Visit History</TabsTrigger>
           <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
           <TabsTrigger value="pharmacy">Pharmacy</TabsTrigger>
           <TabsTrigger value="info">Info & Notes</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="records"><MedicalRecordsTab patientId={p.id} /></TabsContent>
+        <TabsContent value="lab"><LabReportsTab patientId={p.id} /></TabsContent>
 
         <TabsContent value="visits">
           <Card className="shadow-soft">
