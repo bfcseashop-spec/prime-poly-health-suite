@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Phone, MapPin, Cake, ShieldCheck, Stethoscope, Pill, Receipt, Calendar, Activity, ClipboardList, FlaskConical, ScanLine, CreditCard, FileText, Clock, Mail, User } from "lucide-react";
+import { ArrowLeft, Phone, MapPin, Cake, ShieldCheck, Stethoscope, Pill, Receipt, Calendar, Activity, ClipboardList, FlaskConical, ScanLine, CreditCard, FileText, Clock, Mail, User, Images } from "lucide-react";
 import { fmtUSD } from "@/lib/currency";
 import MedicalRecordsTab from "@/components/patient/MedicalRecordsTab";
 import LabReportsTab from "@/components/patient/LabReportsTab";
+import PatientPhotoGallery from "@/components/patient/PatientPhotoGallery";
 
 function initials(name?: string) {
   return (name ?? "?").split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
