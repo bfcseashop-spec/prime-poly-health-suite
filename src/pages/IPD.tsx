@@ -42,6 +42,8 @@ export default function IPD() {
   const [filter, setFilter] = useState<"all" | "available" | "occupied" | "maintenance">("all");
   const [admitOpen, setAdmitOpen] = useState(false);
   const [dischargeFor, setDischargeFor] = useState<any | null>(null);
+  const [transferFor, setTransferFor] = useState<any | null>(null);
+  const [transferForm, setTransferForm] = useState<{ room_id: string; bed_no: string; doctor_name: string; reason: string }>({ room_id: "", bed_no: "", doctor_name: "", reason: "" });
   const [preselectRoom, setPreselectRoom] = useState<string>("");
 
   const [form, setForm] = useState<any>({
