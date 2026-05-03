@@ -63,9 +63,15 @@ export default function POS() {
   const [insuranceCard, setInsuranceCard] = useState<any | null>(null);
   const [cardInput, setCardInput] = useState("");
   const [notes, setNotes] = useState("");
+  const [discountType, setDiscountType] = useState<"none" | "flat" | "percent">("none");
+  const [discountValue, setDiscountValue] = useState(0);
+  const [splitMode, setSplitMode] = useState(false);
+  const [autoMethod, setAutoMethod] = useState("cash");
   const [splits, setSplits] = useState<SplitPayment[]>([{ id: crypto.randomUUID(), method: "cash", amount: 0 }]);
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState({ name: "", price_usd: 0, item_type: "service" as CartItem["item_type"] });
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [lastInvoice, setLastInvoice] = useState<any>(null);
 
   const load = async () => {
     const [m, s, p, inj, pkg, pkgI] = await Promise.all([
