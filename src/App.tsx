@@ -19,6 +19,7 @@ import Invoices from "./pages/Invoices";
 import Expenses from "./pages/Expenses";
 import Insurance from "./pages/Insurance";
 import Laboratory from "./pages/Laboratory";
+import XRay from "./pages/XRay";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -48,7 +49,7 @@ const App = () => (
               <Route path="/invoices" element={<ProtectedRoute roles={["admin","accountant","receptionist","pharmacist"]}><AppLayout><Invoices /></AppLayout></ProtectedRoute>} />
               <Route path="/due-management" element={<ProtectedRoute roles={["admin","accountant","receptionist","pharmacist"]}><AppLayout><DueManagement /></AppLayout></ProtectedRoute>} />
               <Route path="/lab" element={<ProtectedRoute roles={["admin","doctor","nurse","lab_tech","receptionist"]}><AppLayout><Laboratory /></AppLayout></ProtectedRoute>} />
-              <Route path="/xray" element={<Shell><ComingSoon title="X-Ray Department" /></Shell>} />
+              <Route path="/xray" element={<ProtectedRoute roles={["admin","doctor","nurse","lab_tech","receptionist"]}><AppLayout><XRay /></AppLayout></ProtectedRoute>} />
               <Route path="/ot" element={<Shell><ComingSoon title="Operation Theater" /></Shell>} />
               <Route path="/billing" element={<Shell><ComingSoon title="Billing & Invoices" /></Shell>} />
               <Route path="/expenses" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><Expenses /></AppLayout></ProtectedRoute>} />

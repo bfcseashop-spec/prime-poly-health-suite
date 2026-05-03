@@ -981,6 +981,162 @@ export type Database = {
         }
         Relationships: []
       }
+      xray_order_items: {
+        Row: {
+          body_part: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          findings: string | null
+          id: string
+          image_urls: string[] | null
+          impression: string | null
+          modality: string | null
+          order_id: string
+          price_usd: number
+          radiologist_name: string | null
+          report_file_url: string | null
+          status: string
+          test_id: string | null
+          test_name: string
+        }
+        Insert: {
+          body_part?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          findings?: string | null
+          id?: string
+          image_urls?: string[] | null
+          impression?: string | null
+          modality?: string | null
+          order_id: string
+          price_usd?: number
+          radiologist_name?: string | null
+          report_file_url?: string | null
+          status?: string
+          test_id?: string | null
+          test_name: string
+        }
+        Update: {
+          body_part?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          findings?: string | null
+          id?: string
+          image_urls?: string[] | null
+          impression?: string | null
+          modality?: string | null
+          order_id?: string
+          price_usd?: number
+          radiologist_name?: string | null
+          report_file_url?: string | null
+          status?: string
+          test_id?: string | null
+          test_name?: string
+        }
+        Relationships: []
+      }
+      xray_orders: {
+        Row: {
+          clinical_notes: string | null
+          created_at: string
+          created_by: string | null
+          doctor_id: string | null
+          doctor_name: string | null
+          id: string
+          notes: string | null
+          order_no: string
+          ordered_on: string
+          patient_id: string
+          priority: string
+          status: string
+          total_usd: number
+          updated_at: string
+          visit_id: string | null
+        }
+        Insert: {
+          clinical_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          id?: string
+          notes?: string | null
+          order_no?: string
+          ordered_on?: string
+          patient_id: string
+          priority?: string
+          status?: string
+          total_usd?: number
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Update: {
+          clinical_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          id?: string
+          notes?: string | null
+          order_no?: string
+          ordered_on?: string
+          patient_id?: string
+          priority?: string
+          status?: string
+          total_usd?: number
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Relationships: []
+      }
+      xray_tests: {
+        Row: {
+          active: boolean
+          body_part: string | null
+          code: string | null
+          created_at: string
+          description: string | null
+          id: string
+          modality: string
+          name: string
+          price_usd: number
+          turnaround_hours: number | null
+          updated_at: string
+          view_type: string | null
+        }
+        Insert: {
+          active?: boolean
+          body_part?: string | null
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          modality?: string
+          name: string
+          price_usd?: number
+          turnaround_hours?: number | null
+          updated_at?: string
+          view_type?: string | null
+        }
+        Update: {
+          active?: boolean
+          body_part?: string | null
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          modality?: string
+          name?: string
+          price_usd?: number
+          turnaround_hours?: number | null
+          updated_at?: string
+          view_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -993,6 +1149,7 @@ export type Database = {
       generate_invoice_no: { Args: never; Returns: string }
       generate_lab_order_no: { Args: never; Returns: string }
       generate_patient_code: { Args: never; Returns: string }
+      generate_xray_order_no: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]
