@@ -352,7 +352,6 @@ export default function POS() {
     w.document.close();
   };
 
-  };
 
   const CatBtn = ({ k }: { k: string }) => {
     const m = CAT_META[k]; const Icon = m.icon; const active = activeCat === k;
