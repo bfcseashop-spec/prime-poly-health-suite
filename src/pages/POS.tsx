@@ -58,14 +58,20 @@ export default function POS() {
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("medicine");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [discount, setDiscount] = useState(0);
+  
   const [patientId, setPatientId] = useState<string | undefined>();
   const [insuranceCard, setInsuranceCard] = useState<any | null>(null);
   const [cardInput, setCardInput] = useState("");
   const [notes, setNotes] = useState("");
+  const [discountType, setDiscountType] = useState<"none" | "flat" | "percent">("none");
+  const [discountValue, setDiscountValue] = useState(0);
+  const [splitMode, setSplitMode] = useState(false);
+  const [autoMethod, setAutoMethod] = useState("cash");
   const [splits, setSplits] = useState<SplitPayment[]>([{ id: crypto.randomUUID(), method: "cash", amount: 0 }]);
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState({ name: "", price_usd: 0, item_type: "service" as CartItem["item_type"] });
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [lastInvoice, setLastInvoice] = useState<any>(null);
 
   const load = async () => {
     const [m, s, p, inj, pkg, pkgI] = await Promise.all([
@@ -114,8 +120,14 @@ export default function POS() {
 
   const subtotal = useMemo(() => cart.reduce((s, c) => s + c.price_usd * c.quantity, 0), [cart]);
   const insuranceDiscount = insuranceCard ? +(subtotal * (Number(insuranceCard.discount_percent) / 100)).toFixed(2) : 0;
-  const total = Math.max(0, subtotal - discount - insuranceDiscount);
-  const totalPaid = useMemo(() => splits.reduce((s, p) => s + (Number(p.amount) || 0), 0), [splits]);
+  const discount = useMemo(() => {
+    if (discountType === "flat") return Math.max(0, Number(discountValue) || 0);
+    if (discountType === "percent") return +(subtotal * (Math.max(0, Math.min(100, Number(discountValue) || 0)) / 100)).toFixed(2);
+    return 0;
+  }, [discountType, discountValue, subtotal]);
+  const total = Math.max(0, +(subtotal - discount - insuranceDiscount).toFixed(2));
+  const effectiveSplits = useMemo<SplitPayment[]>(() => splitMode ? splits : [{ id: "auto", method: autoMethod, amount: total }], [splitMode, splits, autoMethod, total]);
+  const totalPaid = useMemo(() => effectiveSplits.reduce((s, p) => s + (Number(p.amount) || 0), 0), [effectiveSplits]);
   const due = Math.max(0, +(total - totalPaid).toFixed(2));
 
   const addCatalogToCart = (it: any) => {
@@ -195,7 +207,7 @@ export default function POS() {
 
   const checkout = async (markAsDue = false) => {
     if (cart.length === 0) return toast.error("Cart is empty");
-    const validSplits = splits.filter(s => Number(s.amount) > 0);
+    const validSplits = effectiveSplits.filter(s => Number(s.amount) > 0);
     const paid = validSplits.reduce((a, s) => a + Number(s.amount), 0);
     const remaining = +(total - paid).toFixed(2);
 
@@ -269,51 +281,77 @@ export default function POS() {
     }
 
     toast.success(`${invoice} — ${status === "paid" ? "Paid" : status === "partial" ? `Partial • ${fmtUSD(remaining)} due` : `Due ${fmtUSD(remaining)}`}`);
-    printReceipt({
+    const inv = {
       invoice, items: cart, subtotal, discount: totalDiscount, total, paid, due: remaining, status,
       splits: validSplits, patient: patients.find(p => p.id === patientId), notes,
-    });
-    setCart([]); setDiscount(0); setPatientId(undefined); setInsuranceCard(null); setNotes("");
-    setSplits([{ id: crypto.randomUUID(), method: "cash", amount: 0 }]);
+      created_at: new Date(),
+    };
+    setLastInvoice(inv);
+    setPreviewOpen(true);
+    setCart([]); setDiscountType("none"); setDiscountValue(0); setPatientId(undefined); setInsuranceCard(null); setNotes("");
+    setSplits([{ id: crypto.randomUUID(), method: "cash", amount: 0 }]); setSplitMode(false); setAutoMethod("cash");
     load();
   };
 
+  const KHR = (n: number) => `៛${Math.round((n || 0) * 4100).toLocaleString()}`;
+
   const printReceipt = (r: any) => {
-    const w = window.open("", "_blank", "width=400,height=700");
+    const w = window.open("", "_blank", "width=800,height=900");
     if (!w) return;
-    const splitRows = r.splits.length > 0
-      ? r.splits.map((s: SplitPayment) => `<div><span style="text-transform:uppercase">${s.method}</span><span>${fmtUSD(Number(s.amount))}</span></div>`).join("")
+    const splitRows = (r.splits || []).length > 0
+      ? r.splits.map((s: SplitPayment) => `<div><span style="text-transform:uppercase">${s.method}</span><span>${fmtUSD(Number(s.amount))} • ${KHR(Number(s.amount))}</span></div>`).join("")
       : "";
+    const rows = r.items.map((i: any, idx: number) => `
+      <tr>
+        <td style="text-align:center">${idx + 1}</td>
+        <td><div style="font-weight:600">${i.name}</div><div style="font-size:10px;color:#64748b;text-transform:capitalize">${i.item_type}${i.description ? ` — ${i.description}` : ""}</div></td>
+        <td style="text-align:center">${i.quantity}</td>
+        <td class="r">${fmtUSD(i.price_usd)}<div style="font-size:10px;color:#64748b">${KHR(i.price_usd)}</div></td>
+        <td class="r"><b>${fmtUSD(i.price_usd * i.quantity)}</b><div style="font-size:10px;color:#64748b">${KHR(i.price_usd * i.quantity)}</div></td>
+      </tr>`).join("");
     w.document.write(`<html><head><title>${r.invoice}</title><style>
-      body{font-family:system-ui;padding:20px;max-width:380px;margin:auto;color:#0f172a}
-      .h{text-align:center;border-bottom:2px dashed #0F6E56;padding-bottom:12px;margin-bottom:12px}
-      .h h1{color:#0F6E56;margin:6px 0;font-size:18px} .h p{margin:2px 0;font-size:11px;color:#64748b}
-      table{width:100%;font-size:12px;border-collapse:collapse} td{padding:4px 0} .r{text-align:right}
-      .tot{border-top:1px dashed #94a3b8;margin-top:8px;padding-top:8px} .tot div{display:flex;justify-content:space-between;font-size:13px;margin:3px 0}
-      .grand{font-weight:bold;font-size:15px;color:#0F6E56;border-top:2px solid #0F6E56;padding-top:6px;margin-top:6px}
-      .due{color:#b91c1c;font-weight:bold}
-      .f{text-align:center;margin-top:16px;font-size:11px;color:#64748b}
-      .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;font-weight:bold}</style></head><body>
-      <div class="h"><div style="font-size:24px;color:#0F6E56;font-weight:bold">+ Prime Poly Clinic</div>
-        <p>Invoice / Receipt</p><p>${new Date().toLocaleString()}</p>
-        <p><strong>${r.invoice}</strong></p>
-        <p><span class="badge" style="background:${r.status==='paid'?'#d1fae5':r.status==='partial'?'#fef3c7':'#fee2e2'};color:${r.status==='paid'?'#065f46':r.status==='partial'?'#92400e':'#991b1b'}">${r.status}</span></p>
-        ${r.patient ? `<p>${r.patient.patient_code} — ${r.patient.full_name}</p>` : ""}</div>
-      <table>${r.items.map((i: any) => `<tr><td>${i.name}<br><small style="color:#64748b">${i.item_type} • ${i.quantity} × ${fmtUSD(i.price_usd)}</small></td><td class="r">${fmtUSD(i.price_usd * i.quantity)}</td></tr>`).join("")}</table>
-      <div class="tot">
-        <div><span>Subtotal</span><span>${fmtUSD(r.subtotal)}</span></div>
-        <div><span>Discount</span><span>−${fmtUSD(r.discount)}</span></div>
-        <div class="grand"><span>TOTAL</span><span>${fmtUSD(r.total)}</span></div>
-        <div style="font-size:11px;color:#64748b;text-align:right">≈ ៛${Math.round(r.total*4100).toLocaleString()}</div>
-        <div style="margin-top:8px;border-top:1px dashed #cbd5e1;padding-top:6px">${splitRows}</div>
-        <div><span>Paid</span><span>${fmtUSD(r.paid)}</span></div>
-        ${r.due > 0 ? `<div class="due"><span>BALANCE DUE</span><span>${fmtUSD(r.due)}</span></div>` : ""}
-        ${r.notes ? `<div style="margin-top:6px;font-size:11px;color:#64748b">Note: ${r.notes}</div>` : ""}
+      *{box-sizing:border-box} body{font-family:system-ui,-apple-system,sans-serif;padding:24px;max-width:760px;margin:auto;color:#0f172a}
+      .h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0F6E56;padding-bottom:14px;margin-bottom:14px}
+      .brand{font-size:22px;color:#0F6E56;font-weight:800} .brand small{display:block;font-size:11px;color:#64748b;font-weight:400;margin-top:2px}
+      .meta{text-align:right;font-size:12px;color:#475569} .meta b{color:#0f172a;font-size:13px}
+      .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10px;text-transform:uppercase;font-weight:bold;margin-top:4px}
+      .pinfo{background:#f1f5f9;padding:10px 12px;border-radius:8px;margin-bottom:14px;font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+      table.items{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px}
+      table.items th{background:#0F6E56;color:#fff;text-align:left;padding:8px;font-weight:600;font-size:11px;text-transform:uppercase}
+      table.items th:first-child,table.items th:nth-child(3){text-align:center} table.items th:nth-child(4),table.items th:nth-child(5){text-align:right}
+      table.items td{padding:8px;border-bottom:1px solid #e2e8f0;vertical-align:top} .r{text-align:right}
+      .tot{margin-left:auto;width:60%;font-size:13px} .tot div{display:flex;justify-content:space-between;padding:4px 0}
+      .grand{font-weight:800;font-size:16px;color:#0F6E56;border-top:2px solid #0F6E56;border-bottom:2px solid #0F6E56;padding:8px 0;margin:6px 0}
+      .due{color:#b91c1c;font-weight:700} .pay{margin-top:14px;padding:10px;background:#f8fafc;border-radius:8px;font-size:12px}
+      .pay div{display:flex;justify-content:space-between;padding:2px 0}
+      .f{text-align:center;margin-top:24px;font-size:11px;color:#64748b;border-top:1px dashed #cbd5e1;padding-top:12px}
+      @media print{@page{margin:14mm}}
+      </style></head><body>
+      <div class="h">
+        <div><div class="brand">+ Prime Poly Clinic<small>Invoice / Receipt</small></div></div>
+        <div class="meta"><b>${r.invoice}</b><div>${new Date(r.created_at || Date.now()).toLocaleString()}</div>
+          <span class="badge" style="background:${r.status==='paid'?'#d1fae5':r.status==='partial'?'#fef3c7':'#fee2e2'};color:${r.status==='paid'?'#065f46':r.status==='partial'?'#92400e':'#991b1b'}">${r.status}</span>
+        </div>
       </div>
-      <div class="f">Thank you for choosing Prime Poly Clinic</div>
-      <script>window.print()</script></body></html>`);
+      ${r.patient ? `<div class="pinfo"><div><b>Patient:</b> ${r.patient.full_name}</div><div><b>ID:</b> ${r.patient.patient_code}</div></div>` : `<div class="pinfo"><div><b>Walk-in customer</b></div></div>`}
+      <table class="items">
+        <thead><tr><th style="width:40px">SL</th><th>Description</th><th style="width:50px">Qty</th><th style="width:110px">Unit Price</th><th style="width:120px">Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="tot">
+        <div><span>Subtotal</span><span>${fmtUSD(r.subtotal)} • ${KHR(r.subtotal)}</span></div>
+        ${r.discount > 0 ? `<div><span>Discount</span><span>−${fmtUSD(r.discount)} • ${KHR(r.discount)}</span></div>` : ""}
+        <div class="grand"><span>TOTAL</span><span>${fmtUSD(r.total)}<br><span style="font-size:12px;font-weight:600">${KHR(r.total)}</span></span></div>
+        <div><span>Paid</span><span>${fmtUSD(r.paid)} • ${KHR(r.paid)}</span></div>
+        ${r.due > 0 ? `<div class="due"><span>BALANCE DUE</span><span>${fmtUSD(r.due)} • ${KHR(r.due)}</span></div>` : ""}
+      </div>
+      ${splitRows ? `<div class="pay"><b style="display:block;margin-bottom:4px">Payment Breakdown</b>${splitRows}</div>` : ""}
+      ${r.notes ? `<div class="pay"><b>Note:</b> ${r.notes}</div>` : ""}
+      <div class="f">Thank you for choosing Prime Poly Clinic<br/>Exchange rate: 1 USD ≈ 4,100 KHR</div>
+      <script>window.onload=()=>window.print()</script></body></html>`);
     w.document.close();
   };
+
 
   const CatBtn = ({ k }: { k: string }) => {
     const m = CAT_META[k]; const Icon = m.icon; const active = activeCat === k;
@@ -428,8 +466,21 @@ export default function POS() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">Manual Discount (USD)</Label>
-                <Input type="number" step="0.01" value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className="h-8" />
+                <Label className="text-xs">Discount</Label>
+                <div className="flex gap-1">
+                  <Select value={discountType} onValueChange={(v: any) => { setDiscountType(v); if (v === "none") setDiscountValue(0); }}>
+                    <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No discount</SelectItem>
+                      <SelectItem value="flat">Flat (USD)</SelectItem>
+                      <SelectItem value="percent">Percentage (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {discountType !== "none" && (
+                    <Input type="number" step="0.01" className="h-8 w-24" placeholder={discountType === "percent" ? "%" : "USD"}
+                      value={discountValue || ""} onChange={e => setDiscountValue(Number(e.target.value) || 0)} />
+                  )}
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -442,28 +493,43 @@ export default function POS() {
             <div className="space-y-1 pt-2 border-t">
               <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmtUSD(subtotal)}</span></div>
               {insuranceDiscount > 0 && <div className="flex justify-between text-sm text-success"><span>Insurance ({Number(insuranceCard?.discount_percent)}%)</span><span>−{fmtUSD(insuranceDiscount)}</span></div>}
-              {discount > 0 && <div className="flex justify-between text-sm text-muted-foreground"><span>Discount</span><span>−{fmtUSD(discount)}</span></div>}
+              {discount > 0 && <div className="flex justify-between text-sm text-success"><span>Discount{discountType === "percent" ? ` (${discountValue}%)` : ""}</span><span>−{fmtUSD(discount)}</span></div>}
               <div className="flex justify-between text-base font-bold text-primary pt-1 border-t"><span>TOTAL</span><span>{fmtUSD(total)}</span></div>
               <p className="text-right text-[10px] text-muted-foreground">{fmtBoth(total).split(" • ")[1]}</p>
             </div>
 
-            {/* SPLIT PAYMENTS */}
+            {/* PAYMENT */}
             <div className="space-y-2 pt-2 border-t">
               <div className="flex items-center justify-between">
-                <Label className="text-xs flex items-center gap-1"><Wallet className="h-3 w-3" />Split Payment</Label>
-                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={addSplit}><Plus className="h-3 w-3 mr-1" />Add</Button>
+                <Label className="text-xs flex items-center gap-1"><Wallet className="h-3 w-3" />Payment</Label>
+                <button type="button" onClick={() => setSplitMode(m => !m)}
+                  className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${splitMode ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border"}`}>
+                  {splitMode ? "Split: ON" : "Split Bill"}
+                </button>
               </div>
-              {splits.map(s => (
-                <div key={s.id} className="flex gap-1 items-center">
-                  <Select value={s.method} onValueChange={v => updSplit(s.id, { method: v })}>
-                    <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Input type="number" step="0.01" className="h-8 w-24" placeholder="0.00" value={s.amount || ""} onChange={e => updSplit(s.id, { amount: Number(e.target.value) || 0 })} />
-                  <Button size="icon" variant="ghost" className="h-7 w-7" title="Fill remaining" onClick={() => fillRemaining(s.id)}><span className="text-xs">=</span></Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => rmSplit(s.id)}><X className="h-3 w-3" /></Button>
-                </div>
-              ))}
+
+              {!splitMode ? (
+                <Select value={autoMethod} onValueChange={setAutoMethod}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                </Select>
+              ) : (
+                <>
+                  {splits.map(s => (
+                    <div key={s.id} className="flex gap-1 items-center">
+                      <Select value={s.method} onValueChange={v => updSplit(s.id, { method: v })}>
+                        <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Input type="number" step="0.01" className="h-8 w-24" placeholder="0.00" value={s.amount || ""} onChange={e => updSplit(s.id, { amount: Number(e.target.value) || 0 })} />
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Fill remaining" onClick={() => fillRemaining(s.id)}><span className="text-xs">=</span></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => rmSplit(s.id)}><X className="h-3 w-3" /></Button>
+                    </div>
+                  ))}
+                  <Button size="sm" variant="ghost" className="h-7 text-xs w-full" onClick={addSplit}><Plus className="h-3 w-3 mr-1" />Add payment row</Button>
+                </>
+              )}
+
               <div className="flex justify-between text-xs pt-1">
                 <span className="text-muted-foreground">Paid</span>
                 <span className="font-medium">{fmtUSD(totalPaid)}</span>
@@ -502,6 +568,80 @@ export default function POS() {
             </div>
           </div>
           <DialogFooter><Button onClick={addCustom}>Add to Cart</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* INVOICE PREVIEW */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5 text-primary" />Invoice Preview</DialogTitle>
+          </DialogHeader>
+          {lastInvoice && (
+            <div className="space-y-4 text-sm">
+              <div className="flex justify-between items-start border-b-2 border-primary pb-3">
+                <div>
+                  <div className="text-xl font-bold text-primary">+ Prime Poly Clinic</div>
+                  <p className="text-xs text-muted-foreground">Invoice / Receipt</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold">{lastInvoice.invoice}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(lastInvoice.created_at).toLocaleString()}</p>
+                  <Badge variant={lastInvoice.status === "paid" ? "default" : lastInvoice.status === "partial" ? "secondary" : "destructive"} className="mt-1 uppercase">{lastInvoice.status}</Badge>
+                </div>
+              </div>
+              <div className="bg-muted/50 p-2 rounded text-xs">
+                {lastInvoice.patient ? <><b>{lastInvoice.patient.full_name}</b> — {lastInvoice.patient.patient_code}</> : <b>Walk-in customer</b>}
+              </div>
+              <table className="w-full text-xs border-collapse">
+                <thead className="bg-primary text-primary-foreground">
+                  <tr>
+                    <th className="p-2 text-center w-10">SL</th>
+                    <th className="p-2 text-left">Description</th>
+                    <th className="p-2 text-center w-12">Qty</th>
+                    <th className="p-2 text-right w-24">Unit Price</th>
+                    <th className="p-2 text-right w-28">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastInvoice.items.map((i: any, idx: number) => (
+                    <tr key={idx} className="border-b">
+                      <td className="p-2 text-center">{idx + 1}</td>
+                      <td className="p-2">
+                        <div className="font-medium">{i.name}</div>
+                        <div className="text-[10px] text-muted-foreground capitalize">{i.item_type}{i.description ? ` — ${i.description}` : ""}</div>
+                      </td>
+                      <td className="p-2 text-center">{i.quantity}</td>
+                      <td className="p-2 text-right">{fmtUSD(i.price_usd)}<div className="text-[10px] text-muted-foreground">{KHR(i.price_usd)}</div></td>
+                      <td className="p-2 text-right font-semibold">{fmtUSD(i.price_usd * i.quantity)}<div className="text-[10px] text-muted-foreground font-normal">{KHR(i.price_usd * i.quantity)}</div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="ml-auto w-full sm:w-2/3 space-y-1">
+                <div className="flex justify-between"><span>Subtotal</span><span>{fmtUSD(lastInvoice.subtotal)} • {KHR(lastInvoice.subtotal)}</span></div>
+                {lastInvoice.discount > 0 && <div className="flex justify-between text-success"><span>Discount</span><span>−{fmtUSD(lastInvoice.discount)}</span></div>}
+                <div className="flex justify-between font-bold text-base text-primary border-y-2 border-primary py-2">
+                  <span>TOTAL</span>
+                  <span className="text-right">{fmtUSD(lastInvoice.total)}<div className="text-xs">{KHR(lastInvoice.total)}</div></span>
+                </div>
+                <div className="flex justify-between"><span>Paid</span><span>{fmtUSD(lastInvoice.paid)}</span></div>
+                {lastInvoice.due > 0 && <div className="flex justify-between text-destructive font-bold"><span>BALANCE DUE</span><span>{fmtUSD(lastInvoice.due)}</span></div>}
+              </div>
+              {lastInvoice.splits?.length > 0 && (
+                <div className="bg-muted/50 p-2 rounded text-xs space-y-1">
+                  <p className="font-semibold">Payment Breakdown</p>
+                  {lastInvoice.splits.map((s: any, i: number) => (
+                    <div key={i} className="flex justify-between"><span className="uppercase">{s.method}</span><span>{fmtUSD(Number(s.amount))}</span></div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>Close</Button>
+            <Button onClick={() => lastInvoice && printReceipt(lastInvoice)}><Receipt className="h-4 w-4 mr-1" />Print Invoice</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
