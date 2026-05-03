@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      expenses: {
+        Row: {
+          amount_usd: number
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          payment_method: string
+          updated_at: string
+        }
+        Insert: {
+          amount_usd?: number
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          payment_method?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_usd?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          payment_method?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       medicine_sale_items: {
         Row: {
           id: string
@@ -392,6 +428,51 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_salaries: {
+        Row: {
+          amount_usd: number
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          paid_on: string
+          pay_period_month: string
+          payment_method: string
+          role: string | null
+          staff_id: string | null
+          staff_name: string
+          updated_at: string
+        }
+        Insert: {
+          amount_usd?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_on?: string
+          pay_period_month?: string
+          payment_method?: string
+          role?: string | null
+          staff_id?: string | null
+          staff_name: string
+          updated_at?: string
+        }
+        Update: {
+          amount_usd?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_on?: string
+          pay_period_month?: string
+          payment_method?: string
+          role?: string | null
+          staff_id?: string | null
+          staff_name?: string
           updated_at?: string
         }
         Relationships: []
