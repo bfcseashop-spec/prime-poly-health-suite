@@ -383,11 +383,17 @@ export default function Insurance() {
                     </div>
 
                     <div className="relative mt-4 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => openEdit(r)}>
+                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => setPreviewCard(r)} title="View / Print">
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => printCard(toCardData(r))} title="Print">
+                        <Printer className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => openEdit(r)} title="Edit">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       {isAdmin && (
-                        <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-destructive text-white border-0" onClick={() => setDeleteId(r.id)}>
+                        <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-destructive text-white border-0" onClick={() => setDeleteId(r.id)} title="Delete">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -425,9 +431,11 @@ export default function Insurance() {
                       <TableCell><Badge variant="outline" className="capitalize">{r.status}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => setPreviewCard(r)} title="View"><Eye className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => printCard(toCardData(r))} title="Print"><Printer className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(r)} title="Edit"><Pencil className="h-4 w-4" /></Button>
                           {isAdmin && (
-                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)}>
+                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)} title="Delete">
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           )}
@@ -622,6 +630,48 @@ export default function Insurance() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Card preview dialog */}
+      <Dialog open={!!previewCard} onOpenChange={(o) => !o && setPreviewCard(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Insurance Card Preview</DialogTitle>
+            <DialogDescription>Front and back view — ready to print.</DialogDescription>
+          </DialogHeader>
+          {previewCard && <InsuranceCardPreview card={toCardData(previewCard)} />}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewCard(null)}>Close</Button>
+            {previewCard && (
+              <Button onClick={() => printCard(toCardData(previewCard))} className="gap-2">
+                <Printer className="h-4 w-4" /> Print Card
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Scan dialog */}
+      <Dialog open={scanOpen} onOpenChange={setScanOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Scan Insurance Card</DialogTitle>
+            <DialogDescription>Use a barcode scanner or type the card number to fetch the patient record and apply discount.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleScan(); }} className="space-y-3">
+            <Input
+              autoFocus
+              placeholder="Scan or type card number (e.g. GLD-00012)"
+              value={scanInput}
+              onChange={(e) => setScanInput(e.target.value)}
+              className="font-mono uppercase"
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setScanOpen(false)}>Cancel</Button>
+              <Button type="submit" className="gap-2"><ScanBarcode className="h-4 w-4" />Lookup</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
