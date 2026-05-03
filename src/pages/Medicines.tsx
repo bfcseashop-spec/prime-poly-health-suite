@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Pill, Pencil, Trash2, PackagePlus, History, TrendingUp, AlertTriangle, Boxes, Upload, Download, ScanBarcode, Settings2, ImagePlus, X } from "lucide-react";
+import { Plus, Search, Pill, Pencil, Trash2, PackagePlus, History, TrendingUp, AlertTriangle, Boxes, Upload, Download, ScanBarcode, Settings2, ImagePlus, X, Camera } from "lucide-react";
+import { CameraScanner } from "@/components/CameraScanner";
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
@@ -60,6 +61,7 @@ export default function Medicines() {
   const [stockForm, setStockForm] = useState({ change_type: "purchase", quantity_change: "", unit: "Pcs", cost_price_usd: "", notes: "" });
   const [optDlg, setOptDlg] = useState(false);
   const [scanInput, setScanInput] = useState("");
+  const [camOpen, setCamOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLInputElement>(null);
@@ -369,9 +371,12 @@ export default function Medicines() {
             placeholder="Scan barcode here (single / strip / packet / box) — auto adds to stock"
             className="border-0 focus-visible:ring-0 text-base"
           />
+          <Button variant="outline" onClick={() => setCamOpen(true)}><Camera className="h-4 w-4 mr-2" />Camera</Button>
           <Button onClick={() => handleScan(scanInput.trim())}>Add</Button>
         </CardContent>
       </Card>
+
+      <CameraScanner open={camOpen} onOpenChange={setCamOpen} onDetected={(code) => { setScanInput(code); handleScan(code); }} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="shadow-soft"><CardContent className="p-4 flex items-center gap-3"><Boxes className="h-8 w-8 text-primary" /><div><p className="text-xs text-muted-foreground">Total Items</p><p className="text-2xl font-bold">{stats.total}</p></div></CardContent></Card>
