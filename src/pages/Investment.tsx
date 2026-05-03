@@ -70,7 +70,7 @@ const emptyContribution = {
 export default function Investment() {
   const [shareholders, setShareholders] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
-
+  const [investments, setInvestments] = useState<any[]>([]);
   const [shOpen, setShOpen] = useState(false);
   const [shForm, setShForm] = useState<typeof emptyShareholder>(emptyShareholder);
 
@@ -167,15 +167,17 @@ export default function Investment() {
   const CATEGORIES = useMemo(() => categories.map(c => c.name), [categories]);
 
   const load = async () => {
-    const [s, c, cat] = await Promise.all([
+    const [s, c, cat, inv] = await Promise.all([
       (supabase.from("shareholders" as any) as any).select("*").order("created_at"),
       (supabase.from("shareholder_contributions" as any) as any).select("*").order("paid_on", { ascending: false }),
       (supabase.from("investment_categories" as any) as any).select("*").order("name"),
+      (supabase.from("investments" as any) as any).select("*").order("created_at"),
     ]);
     if (s.error) toast.error(s.error.message);
     setShareholders(s.data ?? []);
     setContributions(c.data ?? []);
     setCategories(cat.data ?? []);
+    setInvestments(inv.data ?? []);
   };
   useEffect(() => { load(); }, []);
 
@@ -185,8 +187,15 @@ export default function Investment() {
     return map;
   }, [contributions]);
 
+  const investmentsTotal = useMemo(
+    () => investments.reduce((s, x) => s + Number(x.total_amount_usd || 0), 0),
+    [investments]
+  );
+
   const totals = useMemo(() => {
-    const totalCommitted = shareholders.reduce((s, x) => s + Number(x.committed_capital_usd || 0), 0);
+    const totalCommitted = investmentsTotal > 0
+      ? investmentsTotal
+      : shareholders.reduce((s, x) => s + Number(x.committed_capital_usd || 0), 0);
     const totalPaid = contributions.reduce((s, x) => s + Number(x.amount_usd || 0), 0);
     return {
       totalCommitted,
@@ -195,7 +204,7 @@ export default function Investment() {
       contribCount: contributions.length,
       count: shareholders.length,
     };
-  }, [shareholders, contributions]);
+  }, [shareholders, contributions, investmentsTotal]);
 
   const months = useMemo(() => {
     const set = new Set<string>();
@@ -372,6 +381,16 @@ export default function Investment() {
     });
     setCOpen(true);
   };
+  const openEditInvestment = (inv: any) => {
+    setCForm({
+      ...emptyContribution,
+      id: inv.id,
+      investment_name: inv.name,
+      amount_usd: inv.total_amount_usd ?? "",
+      notes: inv.notes ?? "",
+    });
+    setCOpen(true);
+  };
   const handleSlipUpload = async (file: File) => {
     setUploading(true);
     try {
@@ -385,71 +404,64 @@ export default function Investment() {
     } catch (e: any) { toast.error(e.message); }
     finally { setUploading(false); }
   };
+  const recomputeShareholderCapitals = async (newInvestmentsTotal: number) => {
+    // Update each shareholder's committed_capital_usd from share_percent × total
+    await Promise.all(
+      shareholders.map((s: any) => {
+        const pct = Number(s.share_percent || 0);
+        const amt = +((newInvestmentsTotal * pct) / 100).toFixed(2);
+        return (supabase.from("shareholders" as any) as any)
+          .update({ committed_capital_usd: amt }).eq("id", s.id);
+      })
+    );
+  };
+
   const submitC = async () => {
     const amt = Number(cForm.amount_usd);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
     if (!cForm.investment_name?.trim()) return toast.error("Investment name is required");
 
     const { data: u } = await supabase.auth.getUser();
-    const finalNotes = cForm.notes || "";
-    const categoryValue = cForm.category || "Capital";
 
-
-    // Edit mode → single update
     if (cForm.id) {
-      const payload: any = {
-        shareholder_id: cForm.shareholder_id,
-        investment_name: cForm.investment_name.trim(),
-        category: categoryValue,
-        amount_usd: amt,
-        paid_on: cForm.paid_on,
-        payment_method: cForm.payment_method,
-        reference: cForm.reference || null,
-        notes: finalNotes || null,
-        slip_url: cForm.slip_url || null,
-      };
-      const { error } = await (supabase.from("shareholder_contributions" as any) as any).update(payload).eq("id", cForm.id);
+      const { error } = await (supabase.from("investments" as any) as any)
+        .update({ name: cForm.investment_name.trim(), total_amount_usd: amt, notes: cForm.notes || null })
+        .eq("id", cForm.id);
       if (error) return toast.error(error.message);
-      toast.success("Contribution updated");
-      setCOpen(false); load();
-      return;
+    } else {
+      const { error } = await (supabase.from("investments" as any) as any).insert({
+        name: cForm.investment_name.trim(),
+        total_amount_usd: amt,
+        notes: cForm.notes || null,
+        created_by: u.user?.id ?? null,
+      });
+      if (error) return toast.error(error.message);
     }
 
-    // Create mode: split by allocations. If none provided, auto-split across active shareholders by share_percent (fallback equal)
-    let allocs = (cForm.allocations || []).filter(a => a.shareholder_id && Number(a.share_percent) > 0);
-    if (allocs.length === 0) {
-      const active = shareholders.filter((s: any) => s.active !== false);
-      if (active.length === 0) return toast.error("Add at least one investor first");
-      const totalShare = active.reduce((s: number, x: any) => s + Number(x.share_percent || 0), 0);
-      allocs = totalShare > 0
-        ? active.map((s: any) => ({ shareholder_id: s.id, share_percent: Number(s.share_percent || 0) }))
-        : active.map((s: any) => ({ shareholder_id: s.id, share_percent: 100 / active.length }));
-    }
-    const totalPct = allocs.reduce((s, a) => s + Number(a.share_percent || 0), 0);
-    if (totalPct <= 0) return toast.error("Share % must be greater than 0");
+    // Recompute capitals from new total
+    const otherTotal = investments
+      .filter((i: any) => i.id !== cForm.id)
+      .reduce((s, x) => s + Number(x.total_amount_usd || 0), 0);
+    await recomputeShareholderCapitals(otherTotal + amt);
 
-    const rows = allocs.map(a => ({
-      shareholder_id: a.shareholder_id,
-      investment_name: cForm.investment_name.trim(),
-      category: categoryValue,
-      amount_usd: +((amt * Number(a.share_percent)) / totalPct).toFixed(2),
-      paid_on: cForm.paid_on,
-      payment_method: cForm.payment_method,
-      reference: cForm.reference || null,
-      notes: finalNotes || null,
-      slip_url: cForm.slip_url || null,
-      created_by: u.user?.id ?? null,
-    }));
-    const { error } = await (supabase.from("shareholder_contributions" as any) as any).insert(rows);
-    if (error) return toast.error(error.message);
-    toast.success(`Investment recorded for ${allocs.length} investor${allocs.length > 1 ? "s" : ""}`);
+    toast.success(cForm.id ? "Investment updated" : "Investment added");
     setCOpen(false); load();
   };
   const confirmDeleteC = async () => {
     if (!deleteCId) return;
-    const { error } = await (supabase.from("shareholder_contributions" as any) as any).delete().eq("id", deleteCId);
-    if (error) return toast.error(error.message);
-    toast.success("Contribution removed"); setDeleteCId(null); load();
+    const inv = investments.find((i: any) => i.id === deleteCId);
+    if (inv) {
+      const { error } = await (supabase.from("investments" as any) as any).delete().eq("id", deleteCId);
+      if (error) return toast.error(error.message);
+      const newTotal = investments
+        .filter((i: any) => i.id !== deleteCId)
+        .reduce((s, x) => s + Number(x.total_amount_usd || 0), 0);
+      await recomputeShareholderCapitals(newTotal);
+    } else {
+      const { error } = await (supabase.from("shareholder_contributions" as any) as any).delete().eq("id", deleteCId);
+      if (error) return toast.error(error.message);
+    }
+    toast.success("Removed"); setDeleteCId(null); load();
   };
 
   // ===== Category CRUD =====
@@ -513,6 +525,59 @@ export default function Investment() {
           </Button>
         </div>
       </div>
+
+      {/* INVESTMENTS LIST */}
+      <Card className="shadow-soft">
+        <CardContent className="p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-bold text-sm">Investments</p>
+              <p className="text-xs text-muted-foreground">{investments.length} total · drives share % calculations</p>
+            </div>
+            <Button size="sm" onClick={() => openNewC()} className="clinic-gradient text-primary-foreground">
+              <Plus className="h-3.5 w-3.5 mr-1" />Add Investment
+            </Button>
+          </div>
+          {investments.length === 0 ? (
+            <div className="text-center text-xs text-muted-foreground py-6 border-2 border-dashed rounded-lg">
+              No investments yet — click "Add Investment" to begin.
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {investments.map((inv: any) => {
+                const paid = contributions
+                  .filter((c: any) => (c.investment_name || "Capital Amount Investment") === inv.name)
+                  .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
+                const total = Number(inv.total_amount_usd || 0);
+                const due = Math.max(0, total - paid);
+                return (
+                  <div key={inv.id} className="rounded-xl border-2 p-4 hover:border-primary/40 transition-colors bg-background">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">{inv.name}</p>
+                        <p className="text-success font-bold mt-1">{fmtUSD(total)}</p>
+                        <Badge variant="outline" className="mt-1.5 text-[10px] bg-success/10 text-success border-success/30">active</Badge>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditInvestment(inv)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteCId(inv.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t flex justify-between text-xs">
+                      <span className="text-muted-foreground">Paid: <span className="text-foreground font-semibold">{fmtUSD(paid)}</span></span>
+                      <span className="text-muted-foreground">Due: <span className="text-warning font-semibold">{fmtUSD(due)}</span></span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* KPIs */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
@@ -911,11 +976,13 @@ export default function Investment() {
               const investmentTotal = contributions
                 .filter((c: any) => (c.investment_name || "Capital Amount Investment") === selectedInv)
                 .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
-              const baseTotal = investmentTotal > 0
-                ? investmentTotal
-                : shareholders
-                    .filter((s: any) => s.id !== shForm.id)
-                    .reduce((sum: number, s: any) => sum + Number(s.committed_capital_usd || 0), 0);
+              const baseTotal = investmentsTotal > 0
+                ? investmentsTotal
+                : (investmentTotal > 0
+                    ? investmentTotal
+                    : shareholders
+                        .filter((s: any) => s.id !== shForm.id)
+                        .reduce((sum: number, s: any) => sum + Number(s.committed_capital_usd || 0), 0));
               return (
                 <>
                   {/* Share Percentage (drives capital) */}
