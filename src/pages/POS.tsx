@@ -65,6 +65,7 @@ export default function POS() {
   const [insuranceCard, setInsuranceCard] = useState<any | null>(null);
   const [cardInput, setCardInput] = useState("");
   const [notes, setNotes] = useState("");
+  const [referrer, setReferrer] = useState("");
   const [discountType, setDiscountType] = useState<"none" | "flat" | "percent">("none");
   const [discountValue, setDiscountValue] = useState(0);
   const [splitMode, setSplitMode] = useState(false);
