@@ -186,24 +186,34 @@ export default function Medicines() {
     toast.success("Deleted"); load();
   };
 
-  const openStock = (m: Med) => { setStockDlg(m); setStockForm({ change_type: "purchase", quantity_change: "", cost_price_usd: m.cost_price_usd ?? "", notes: "" }); };
+  const openStock = (m: Med) => { setStockDlg(m); setStockForm({ change_type: "purchase", quantity_change: "", unit: "Pcs", cost_price_usd: m.cost_price_usd ?? "", notes: "" }); };
+
+  const unitMultiplier = (m: Med, unit: string): number => {
+    if (unit === "Box") return Number(m.units_per_box || 0) || 1;
+    if (unit === "Packet") return Number(m.units_per_packet || 0) || 1;
+    if (unit === "Strip") return Number(m.units_per_strip || 0) || 1;
+    return 1;
+  };
 
   const saveStock = async () => {
     if (!stockDlg) return;
     const qty = Number(stockForm.quantity_change || 0);
     if (!qty) return toast.error("Quantity required");
-    const signed = ["sale", "damage"].includes(stockForm.change_type) ? -Math.abs(qty) : Math.abs(qty);
+    const mult = unitMultiplier(stockDlg, stockForm.unit);
+    const pcsQty = qty * mult;
+    const signed = ["sale", "damage"].includes(stockForm.change_type) ? -Math.abs(pcsQty) : Math.abs(pcsQty);
     const before = Number(stockDlg.stock || 0);
     const after = Math.max(0, before + signed);
     const { error: e1 } = await supabase.from("medicines").update({ stock: after, ...(stockForm.cost_price_usd ? { cost_price_usd: Number(stockForm.cost_price_usd) } : {}) }).eq("id", stockDlg.id);
     if (e1) return toast.error(e1.message);
+    const unitNote = stockForm.unit !== "Pcs" ? `${qty} ${stockForm.unit} × ${mult} = ${pcsQty} pcs` : "";
     await supabase.from("medicine_stock_history" as any).insert({
       medicine_id: stockDlg.id, change_type: stockForm.change_type, quantity_change: signed,
       stock_before: before, stock_after: after,
       cost_price_usd: stockForm.cost_price_usd ? Number(stockForm.cost_price_usd) : null,
-      notes: stockForm.notes || null, created_by: user?.id,
+      notes: [unitNote, stockForm.notes].filter(Boolean).join(" • ") || null, created_by: user?.id,
     });
-    toast.success("Stock updated"); setStockDlg(null); load();
+    toast.success(`Stock updated (${signed > 0 ? "+" : ""}${signed} pcs)`); setStockDlg(null); load();
   };
 
   const handleScan = async (code: string) => {
