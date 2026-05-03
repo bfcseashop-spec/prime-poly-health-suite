@@ -11,9 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Briefcase, Syringe, Package, Plus, Search, Trash2, Pencil, Eye, Layers, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Briefcase, Syringe, Package, Plus, Search, Trash2, Pencil, Eye, Layers, X, Download, Upload, FileSpreadsheet, Barcode as BarcodeIcon, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
+import { exportToExcel, exportToCSV, parseImportFile, downloadTemplate, printBarcodes } from "@/lib/dataIO";
 
 type Service = { id: string; name: string; category: string; price_usd: number; description: string | null; active: boolean };
 type Injection = { id: string; name: string; brand: string | null; dose: string | null; route: string | null; category: string | null; price_usd: number; stock: number; description: string | null; active: boolean };
