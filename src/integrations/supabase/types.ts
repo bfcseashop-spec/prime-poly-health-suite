@@ -930,6 +930,123 @@ export type Database = {
           },
         ]
       }
+      ot_bookings: {
+        Row: {
+          anesthesia_type: string | null
+          anesthetist_name: string | null
+          charges_usd: number
+          completed_at: string | null
+          complications: string | null
+          created_at: string
+          created_by: string | null
+          duration_minutes: number | null
+          id: string
+          patient_id: string | null
+          patient_name: string
+          post_op_notes: string | null
+          pre_op_notes: string | null
+          priority: string
+          procedure_id: string | null
+          procedure_name: string
+          scheduled_at: string
+          started_at: string | null
+          status: string
+          surgeon_id: string | null
+          surgeon_name: string | null
+          theater_room: string | null
+          updated_at: string
+        }
+        Insert: {
+          anesthesia_type?: string | null
+          anesthetist_name?: string | null
+          charges_usd?: number
+          completed_at?: string | null
+          complications?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          patient_id?: string | null
+          patient_name: string
+          post_op_notes?: string | null
+          pre_op_notes?: string | null
+          priority?: string
+          procedure_id?: string | null
+          procedure_name: string
+          scheduled_at: string
+          started_at?: string | null
+          status?: string
+          surgeon_id?: string | null
+          surgeon_name?: string | null
+          theater_room?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anesthesia_type?: string | null
+          anesthetist_name?: string | null
+          charges_usd?: number
+          completed_at?: string | null
+          complications?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          patient_id?: string | null
+          patient_name?: string
+          post_op_notes?: string | null
+          pre_op_notes?: string | null
+          priority?: string
+          procedure_id?: string | null
+          procedure_name?: string
+          scheduled_at?: string
+          started_at?: string | null
+          status?: string
+          surgeon_id?: string | null
+          surgeon_name?: string | null
+          theater_room?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ot_procedures: {
+        Row: {
+          active: boolean
+          category: string | null
+          code: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          name: string
+          price_usd: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          name: string
+          price_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          name?: string
+          price_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       patient_photos: {
         Row: {
           caption: string | null
