@@ -549,8 +549,8 @@ export default function Investment() {
               <p className="text-xs text-muted-foreground/70 mt-1">Click "Add Investment" to create your first plan</p>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {investments.map((inv: any) => {
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {investments.map((inv: any, idx: number) => {
                 const paid = contributions
                   .filter((c: any) => (c.investment_name || "Capital Amount Investment") === inv.name)
                   .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
@@ -558,42 +558,69 @@ export default function Investment() {
                 const due = Math.max(0, total - paid);
                 const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
                 const isPaid = pct >= 100;
+                const accent = PIE_COLORS[idx % PIE_COLORS.length];
                 return (
                   <div
                     key={inv.id}
-                    className="group relative rounded-xl border-2 bg-background p-4 hover:border-primary/50 hover:shadow-md transition-all"
+                    className="group relative overflow-hidden rounded-2xl border-2 bg-gradient-to-br from-background via-background to-primary/[0.03] hover:border-primary/40 hover:shadow-lg transition-all"
                   >
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold truncate text-sm" title={inv.name}>{inv.name}</p>
-                        <p className="text-lg font-bold text-success mt-0.5 tabular-nums">{fmtUSD(total)}</p>
+                    {/* decorative accent bar */}
+                    <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${accent}, hsl(var(--primary)))` }} />
+                    {/* glow blob */}
+                    <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full opacity-10 blur-2xl" style={{ background: accent }} />
+
+                    <div className="relative p-5 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-md" style={{ background: `linear-gradient(135deg, ${accent}, hsl(var(--primary)))` }}>
+                            <PiggyBank className="h-6 w-6 text-primary-foreground" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold truncate text-sm" title={inv.name}>{inv.name}</p>
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Total Capital</p>
+                            <p className="text-xl font-bold text-success tabular-nums leading-tight">{fmtUSD(total)}</p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] shrink-0",
+                            isPaid
+                              ? "bg-success/10 text-success border-success/30"
+                              : "bg-warning/10 text-warning border-warning/30"
+                          )}
+                        >
+                          {isPaid ? "Paid" : "Active"}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px] shrink-0",
-                          isPaid
-                            ? "bg-success/10 text-success border-success/30"
-                            : "bg-warning/10 text-warning border-warning/30"
-                        )}
-                      >
-                        {isPaid ? "Paid" : "Active"}
-                      </Badge>
-                    </div>
 
-                    <Progress value={pct} className="h-1.5 mb-2" />
-                    <div className="flex justify-between text-[11px] mb-3">
-                      <span className="text-muted-foreground">Paid <span className="text-foreground font-semibold tabular-nums">{fmtUSD(paid)}</span></span>
-                      <span className="text-muted-foreground">Due <span className="text-warning font-semibold tabular-nums">{fmtUSD(due)}</span></span>
-                    </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] mb-1.5">
+                          <span className="text-muted-foreground font-medium">Payment Progress</span>
+                          <span className="font-bold tabular-nums">{pct.toFixed(0)}%</span>
+                        </div>
+                        <Progress value={pct} className="h-2" />
+                      </div>
 
-                    <div className="flex items-center gap-1.5 pt-2 border-t opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="sm" variant="ghost" className="h-7 flex-1 text-xs" onClick={() => openEditInvestment(inv)}>
-                        <Pencil className="h-3 w-3 mr-1" />Edit
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 flex-1 text-xs text-destructive hover:text-destructive" onClick={() => setDeleteCId(inv.id)}>
-                        <Trash2 className="h-3 w-3 mr-1" />Delete
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg bg-success/5 border border-success/20 px-3 py-2">
+                          <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Paid</p>
+                          <p className="text-sm font-bold text-success tabular-nums mt-0.5">{fmtUSD(paid)}</p>
+                        </div>
+                        <div className="rounded-lg bg-warning/5 border border-warning/20 px-3 py-2">
+                          <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Due</p>
+                          <p className="text-sm font-bold text-warning tabular-nums mt-0.5">{fmtUSD(due)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 pt-2 border-t opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="sm" variant="ghost" className="h-7 flex-1 text-xs" onClick={() => openEditInvestment(inv)}>
+                          <Pencil className="h-3 w-3 mr-1" />Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 flex-1 text-xs text-destructive hover:text-destructive" onClick={() => setDeleteCId(inv.id)}>
+                          <Trash2 className="h-3 w-3 mr-1" />Delete
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
