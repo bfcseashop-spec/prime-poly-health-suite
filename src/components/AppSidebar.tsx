@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, SidebarHeader } from "@/components/ui/sidebar";
 import { ClinicLogo } from "./ClinicLogo";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ const future: Item[] = [
   { title: "X-Ray", url: "/xray", icon: ScanLine, roles: ["admin","lab_tech"] },
   { title: "Operation Theater", url: "/ot", icon: Activity, roles: ["admin","doctor","nurse"] },
   { title: "Billing", url: "/billing", icon: Receipt, roles: ["admin","accountant"] },
+  { title: "Expenses", url: "/expenses", icon: Wallet, roles: ["admin","accountant"] },
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["admin","accountant"] },
 ];
 

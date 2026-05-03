@@ -13,6 +13,7 @@ import Patients from "./pages/Patients";
 import OPD from "./pages/OPD";
 import Prescriptions from "./pages/Prescriptions";
 import Pharmacy from "./pages/Pharmacy";
+import Expenses from "./pages/Expenses";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/xray" element={<Shell><ComingSoon title="X-Ray Department" /></Shell>} />
               <Route path="/ot" element={<Shell><ComingSoon title="Operation Theater" /></Shell>} />
               <Route path="/billing" element={<Shell><ComingSoon title="Billing & Invoices" /></Shell>} />
+              <Route path="/expenses" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><Expenses /></AppLayout></ProtectedRoute>} />
               <Route path="/reports" element={<Shell><ComingSoon title="Reports & Analytics" /></Shell>} />
               <Route path="/settings" element={<Shell><ComingSoon title="Settings" /></Shell>} />
               <Route path="*" element={<NotFound />} />
