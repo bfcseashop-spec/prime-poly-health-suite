@@ -60,6 +60,13 @@ export default function Patients() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [confirmDelete, setConfirmDelete] = useState<Patient | null>(null);
+  const [nextCode, setNextCode] = useState<string>("");
+
+  const previewNextCode = async () => {
+    const { count } = await supabase.from("patients").select("*", { count: "exact", head: true });
+    const n = (count ?? 0) + 1;
+    setNextCode(`PD-${String(n).padStart(2, "0")}`);
+  };
 
   const load = async () => {
     setLoading(true);
