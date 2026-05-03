@@ -224,73 +224,65 @@ export default function Staff() {
         </TabsList>
 
         <TabsContent value={tab} className="mt-0">
-          <Card className="shadow-soft">
-            <CardHeader className="pb-2"><CardTitle className="text-base">Staff Records</CardTitle></CardHeader>
+          <Card className="shadow-soft border-border/60">
+            <CardHeader className="pb-3 border-b bg-muted/20">
+              <CardTitle className="text-base font-semibold">Staff Records</CardTitle>
+              <p className="text-xs text-muted-foreground">Manage system users and access</p>
+            </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Age / Gender</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Salary</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="text-primary font-semibold">Email</TableHead>
+                    <TableHead className="text-primary font-semibold">Full Name</TableHead>
+                    <TableHead className="text-primary font-semibold">Role</TableHead>
+                    <TableHead className="text-primary font-semibold">Phone</TableHead>
+                    <TableHead className="text-primary font-semibold text-right">Salary</TableHead>
+                    <TableHead className="text-primary font-semibold text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">No staff records</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No staff records</TableCell></TableRow>
                   ) : filtered.map(r => {
                     const m = posMeta(r.position);
-                    const Icon = m.icon;
                     return (
-                      <TableRow key={r.id}>
-                        <TableCell>
+                      <TableRow key={r.id} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="py-3">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarImage src={r.photo_url || undefined} />
-                              <AvatarFallback>{r.full_name?.split(" ").map((s: string) => s[0]).slice(0,2).join("").toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{r.full_name}</div>
-                              {r.qualification && <div className="text-xs text-muted-foreground flex items-center gap-1"><GraduationCap className="h-3 w-3" />{r.qualification}</div>}
+                            <div className={cn(
+                              "h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0 shadow-sm",
+                              r.photo_url ? "bg-transparent" : avatarColor(r.full_name || r.email || "?")
+                            )}>
+                              {r.photo_url ? (
+                                <Avatar className="h-9 w-9"><AvatarImage src={r.photo_url} /><AvatarFallback>{initials(r.full_name)}</AvatarFallback></Avatar>
+                              ) : initials(r.full_name || r.email || "?")}
                             </div>
+                            <span className="text-sm text-foreground/80">{r.email || <span className="text-muted-foreground italic">no email</span>}</span>
                           </div>
                         </TableCell>
+                        <TableCell className="text-sm font-medium">{r.full_name}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={cn("gap-1", m.color)}>
-                            <Icon className="h-3 w-3" />{m.label}
+                          <Badge variant="outline" className={cn("rounded-full px-3 py-0.5 text-[11px] font-medium border", m.color)}>
+                            {m.label}
                           </Badge>
-                          {r.department && <div className="text-xs text-muted-foreground mt-1">{r.department}</div>}
+                          {r.department && <div className="text-[11px] text-muted-foreground mt-1">{r.department}</div>}
                         </TableCell>
-                        <TableCell className="text-sm">
-                          {r.age ? `${r.age} yrs` : "—"}
-                          {r.gender && <div className="text-xs text-muted-foreground capitalize">{r.gender}</div>}
+                        <TableCell className="text-sm text-muted-foreground">{r.phone || "—"}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">
+                          {fmtUSD(Number(r.monthly_salary_usd || 0))}
+                          <div className="text-[10px] text-muted-foreground font-normal">/month</div>
                         </TableCell>
-                        <TableCell className="text-xs">
-                          {r.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" />{r.phone}</div>}
-                          {r.email && <div className="flex items-center gap-1 text-muted-foreground"><Mail className="h-3 w-3" />{r.email}</div>}
-                          {!r.phone && !r.email && "—"}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {r.joining_date ? (
-                            <div className="flex items-center gap-1"><Calendar className="h-3 w-3 text-muted-foreground" />{format(new Date(r.joining_date), "PP")}</div>
-                          ) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">{fmtUSD(Number(r.monthly_salary_usd || 0))}<div className="text-[10px] text-muted-foreground font-normal">/month</div></TableCell>
                         <TableCell>
-                          <Badge className={cn("capitalize", r.status === "active" ? "bg-success/15 text-success border-success/30" : "bg-muted text-muted-foreground")}>{r.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1.5">
-                            <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
-                              <Pencil className="h-3 w-3" />
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => setViewRow(r)} title="View">
+                              <Eye className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(r.id)}>
-                              <Trash2 className="h-3 w-3" />
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => openEdit(r)} title="Edit">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => setDeleteId(r.id)} title="Delete">
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -303,6 +295,87 @@ export default function Staff() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* VIEW DIALOG */}
+      <Dialog open={!!viewRow} onOpenChange={(o) => !o && setViewRow(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Staff Details</DialogTitle></DialogHeader>
+          {viewRow && (() => {
+            const m = posMeta(viewRow.position);
+            return (
+              <div className="space-y-4 py-2">
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "h-16 w-16 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0",
+                    avatarColor(viewRow.full_name || viewRow.email || "?")
+                  )}>
+                    {viewRow.photo_url ? (
+                      <Avatar className="h-16 w-16"><AvatarImage src={viewRow.photo_url} /><AvatarFallback>{initials(viewRow.full_name)}</AvatarFallback></Avatar>
+                    ) : initials(viewRow.full_name || viewRow.email || "?")}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-semibold truncate">{viewRow.full_name}</p>
+                    <Badge variant="outline" className={cn("rounded-full mt-1 px-3 py-0.5 text-[11px]", m.color)}>{m.label}</Badge>
+                    {viewRow.qualification && (
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <GraduationCap className="h-3 w-3" />{viewRow.qualification}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm border-t pt-3">
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground">Email</p>
+                    <p className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-muted-foreground" />{viewRow.email || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground">Phone</p>
+                    <p className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-muted-foreground" />{viewRow.phone || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground">Department</p>
+                    <p>{viewRow.department || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground">Age / Gender</p>
+                    <p>{viewRow.age ? `${viewRow.age} yrs` : "—"}{viewRow.gender ? ` · ${viewRow.gender}` : ""}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground">Joining Date</p>
+                    <p className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-muted-foreground" />{viewRow.joining_date ? format(new Date(viewRow.joining_date), "PP") : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground">Status</p>
+                    <Badge className={cn("capitalize", viewRow.status === "active" ? "bg-success/15 text-success border-success/30" : "bg-muted text-muted-foreground")}>{viewRow.status}</Badge>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[10px] uppercase text-muted-foreground">Monthly Salary</p>
+                    <p className="text-lg font-bold text-primary">{fmtUSD(Number(viewRow.monthly_salary_usd || 0))}</p>
+                  </div>
+                  {viewRow.address && (
+                    <div className="col-span-2">
+                      <p className="text-[10px] uppercase text-muted-foreground">Address</p>
+                      <p className="flex items-start gap-1.5"><MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />{viewRow.address}</p>
+                    </div>
+                  )}
+                  {viewRow.notes && (
+                    <div className="col-span-2">
+                      <p className="text-[10px] uppercase text-muted-foreground">Notes</p>
+                      <p className="flex items-start gap-1.5"><FileText className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />{viewRow.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewRow(null)}>Close</Button>
+            <Button onClick={() => { const r = viewRow; setViewRow(null); openEdit(r); }}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ADD / EDIT DIALOG */}
       <Dialog open={open} onOpenChange={setOpen}>
