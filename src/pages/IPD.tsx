@@ -143,20 +143,33 @@ export default function IPD() {
     if (!transferForm.room_id) return toast.error("Select a destination room");
     if (transferForm.room_id === transferFor.room_id) return toast.error("Choose a different room");
     const newRoom = rooms.find(r => r.id === transferForm.room_id);
-    const prevNote = transferFor.notes ? `${transferFor.notes}\n` : "";
-    const transferLog = `[Transfer ${format(new Date(), "PPp")}] ${transferFor.rooms?.room_no || "—"} → ${newRoom?.room_no}${transferForm.reason ? ` • ${transferForm.reason}` : ""}`;
+    const { data: userData } = await supabase.auth.getUser();
     const { error } = await (supabase.from("admissions" as any) as any)
       .update({
         room_id: transferForm.room_id,
         bed_no: transferForm.bed_no || null,
         doctor_name: transferForm.doctor_name || null,
         daily_rate_usd: newRoom?.daily_rate_usd ?? transferFor.daily_rate_usd,
-        notes: prevNote + transferLog,
       })
       .eq("id", transferFor.id);
     if (error) return toast.error(error.message);
+    await (supabase.from("admission_transfers" as any) as any).insert({
+      admission_id: transferFor.id,
+      patient_id: transferFor.patient_id,
+      from_room_id: transferFor.room_id,
+      from_room_no: transferFor.rooms?.room_no || null,
+      from_bed_no: transferFor.bed_no || null,
+      to_room_id: transferForm.room_id,
+      to_room_no: newRoom?.room_no || null,
+      to_bed_no: transferForm.bed_no || null,
+      from_doctor_name: transferFor.doctor_name || null,
+      to_doctor_name: transferForm.doctor_name || null,
+      reason: transferForm.reason || null,
+      transferred_by: userData.user?.id ?? null,
+    });
     toast.success("Patient transferred");
     setTransferFor(null);
+    setHistoryFor(null);
     load();
   };
 
