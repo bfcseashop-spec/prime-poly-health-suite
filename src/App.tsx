@@ -23,6 +23,7 @@ import XRay from "./pages/XRay";
 import Services from "./pages/Services";
 import Medicines from "./pages/Medicines";
 import OperationTheater from "./pages/OperationTheater";
+import Reports from "./pages/Reports";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -59,7 +60,7 @@ const App = () => (
               <Route path="/billing" element={<Shell><ComingSoon title="Billing & Invoices" /></Shell>} />
               <Route path="/expenses" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><Expenses /></AppLayout></ProtectedRoute>} />
               <Route path="/insurance" element={<ProtectedRoute roles={["admin","accountant","receptionist"]}><AppLayout><Insurance /></AppLayout></ProtectedRoute>} />
-              <Route path="/reports" element={<Shell><ComingSoon title="Reports & Analytics" /></Shell>} />
+              <Route path="/reports" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><Reports /></AppLayout></ProtectedRoute>} />
               <Route path="/settings" element={<Shell><ComingSoon title="Settings" /></Shell>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
