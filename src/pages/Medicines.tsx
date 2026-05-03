@@ -371,9 +371,12 @@ export default function Medicines() {
             placeholder="Scan barcode here (single / strip / packet / box) — auto adds to stock"
             className="border-0 focus-visible:ring-0 text-base"
           />
+          <Button variant="outline" onClick={() => setCamOpen(true)}><Camera className="h-4 w-4 mr-2" />Camera</Button>
           <Button onClick={() => handleScan(scanInput.trim())}>Add</Button>
         </CardContent>
       </Card>
+
+      <CameraScanner open={camOpen} onOpenChange={setCamOpen} onDetected={(code) => { setScanInput(code); handleScan(code); }} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="shadow-soft"><CardContent className="p-4 flex items-center gap-3"><Boxes className="h-8 w-8 text-primary" /><div><p className="text-xs text-muted-foreground">Total Items</p><p className="text-2xl font-bold">{stats.total}</p></div></CardContent></Card>
