@@ -143,6 +143,7 @@ export default function Investment() {
     const q = search.trim().toLowerCase();
     return contributions.filter(c => {
       if (filterInvestor !== "all" && c.shareholder_id !== filterInvestor) return false;
+      if (filterCategory !== "all" && (c.category || "Capital") !== filterCategory) return false;
       if (filterMonth !== "all" && format(new Date(c.paid_on), "yyyy-MM") !== filterMonth) return false;
       if (q) {
         const sh = shareholders.find(s => s.id === c.shareholder_id);
@@ -151,7 +152,7 @@ export default function Investment() {
       }
       return true;
     });
-  }, [contributions, search, filterMonth, filterInvestor, shareholders]);
+  }, [contributions, search, filterMonth, filterInvestor, filterCategory, shareholders]);
 
   const statusOf = (committed: number, paid: number) => {
     if (committed <= 0) return { label: "Pending", tone: "bg-muted text-muted-foreground border-border" };
