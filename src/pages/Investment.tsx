@@ -388,15 +388,12 @@ export default function Investment() {
   const submitC = async () => {
     const amt = Number(cForm.amount_usd);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
-    if (!cForm.investment_name?.trim()) return toast.error("Title is required");
-    if (!cForm.category) return toast.error("Select a category");
+    if (!cForm.investment_name?.trim()) return toast.error("Investment name is required");
 
     const { data: u } = await supabase.auth.getUser();
-    const baseNotes = cForm.notes || "";
-    const extraMeta: string[] = [];
-    if (cForm.expected_return_usd) extraMeta.push(`Expected Return: $${cForm.expected_return_usd}`);
-    if (cForm.return_date) extraMeta.push(`Return Date: ${cForm.return_date}`);
-    const finalNotes = [baseNotes, extraMeta.join(" • ")].filter(Boolean).join("\n");
+    const finalNotes = cForm.notes || "";
+    const categoryValue = cForm.category || "Capital";
+
 
     // Edit mode → single update
     if (cForm.id) {
