@@ -13,7 +13,8 @@ import Patients from "./pages/Patients";
 import PatientProfile from "./pages/PatientProfile";
 import OPD from "./pages/OPD";
 import Prescriptions from "./pages/Prescriptions";
-import Pharmacy from "./pages/Pharmacy";
+import POS from "./pages/POS";
+import DueManagement from "./pages/DueManagement";
 import Expenses from "./pages/Expenses";
 import Insurance from "./pages/Insurance";
 import ComingSoon from "./pages/ComingSoon";
@@ -40,7 +41,9 @@ const App = () => (
               <Route path="/patients/:id" element={<Shell><PatientProfile /></Shell>} />
               <Route path="/opd" element={<Shell><OPD /></Shell>} />
               <Route path="/prescriptions" element={<ProtectedRoute roles={["doctor"]}><AppLayout><Prescriptions /></AppLayout></ProtectedRoute>} />
-              <Route path="/pharmacy" element={<ProtectedRoute roles={["pharmacist"]}><AppLayout><Pharmacy /></AppLayout></ProtectedRoute>} />
+              <Route path="/pos" element={<ProtectedRoute roles={["admin","pharmacist","receptionist","accountant"]}><AppLayout><POS /></AppLayout></ProtectedRoute>} />
+              <Route path="/pharmacy" element={<ProtectedRoute roles={["admin","pharmacist","receptionist","accountant"]}><AppLayout><POS /></AppLayout></ProtectedRoute>} />
+              <Route path="/due-management" element={<ProtectedRoute roles={["admin","accountant","receptionist","pharmacist"]}><AppLayout><DueManagement /></AppLayout></ProtectedRoute>} />
               <Route path="/lab" element={<Shell><ComingSoon title="Laboratory" /></Shell>} />
               <Route path="/xray" element={<Shell><ComingSoon title="X-Ray Department" /></Shell>} />
               <Route path="/ot" element={<Shell><ComingSoon title="Operation Theater" /></Shell>} />

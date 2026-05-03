@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet, ShieldCheck, CreditCard } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, SidebarHeader } from "@/components/ui/sidebar";
 import { ClinicLogo } from "./ClinicLogo";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
@@ -11,13 +11,14 @@ const main: Item[] = [
   { title: "Patients", url: "/patients", icon: Users, roles: ["admin","doctor","nurse","receptionist","accountant"] },
   { title: "OPD Queue", url: "/opd", icon: Stethoscope, roles: ["admin","doctor","nurse","receptionist"] },
   { title: "Prescriptions", url: "/prescriptions", icon: FileText, roles: ["admin","doctor"] },
-  { title: "Pharmacy POS", url: "/pharmacy", icon: Pill, roles: ["admin","pharmacist"] },
+  { title: "POS / Billing", url: "/pos", icon: Receipt, roles: ["admin","pharmacist","receptionist","accountant"] },
+  { title: "Due Management", url: "/due-management", icon: CreditCard, roles: ["admin","accountant","receptionist","pharmacist"] },
 ];
 const future: Item[] = [
+  { title: "Pharmacy", url: "/pos", icon: Pill, roles: ["admin","pharmacist"] },
   { title: "Laboratory", url: "/lab", icon: FlaskConical, roles: ["admin","lab_tech"] },
   { title: "X-Ray", url: "/xray", icon: ScanLine, roles: ["admin","lab_tech"] },
   { title: "Operation Theater", url: "/ot", icon: Activity, roles: ["admin","doctor","nurse"] },
-  { title: "Billing", url: "/billing", icon: Receipt, roles: ["admin","accountant"] },
   { title: "Expenses", url: "/expenses", icon: Wallet, roles: ["admin","accountant"] },
   { title: "Insurance", url: "/insurance", icon: ShieldCheck, roles: ["admin","accountant","receptionist"] },
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["admin","accountant"] },
