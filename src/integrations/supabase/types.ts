@@ -140,6 +140,51 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_transactions: {
+        Row: {
+          account_number: string | null
+          amount_usd: number
+          bank_name: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          receipt_url: string | null
+          reference_no: string | null
+          txn_date: string
+          txn_type: string
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          amount_usd?: number
+          bank_name: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          receipt_url?: string | null
+          reference_no?: string | null
+          txn_date?: string
+          txn_type?: string
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          amount_usd?: number
+          bank_name?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          receipt_url?: string | null
+          reference_no?: string | null
+          txn_date?: string
+          txn_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount_usd: number
