@@ -14,16 +14,437 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      medicine_sale_items: {
+        Row: {
+          id: string
+          medicine_id: string
+          name: string
+          price_usd: number
+          quantity: number
+          sale_id: string
+          total_usd: number
+        }
+        Insert: {
+          id?: string
+          medicine_id: string
+          name: string
+          price_usd: number
+          quantity: number
+          sale_id: string
+          total_usd: number
+        }
+        Update: {
+          id?: string
+          medicine_id?: string
+          name?: string
+          price_usd?: number
+          quantity?: number
+          sale_id?: string
+          total_usd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicine_sale_items_medicine_id_fkey"
+            columns: ["medicine_id"]
+            isOneToOne: false
+            referencedRelation: "medicines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medicine_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "medicine_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medicine_sales: {
+        Row: {
+          cashier_id: string | null
+          created_at: string
+          discount_usd: number
+          id: string
+          invoice_no: string
+          patient_id: string | null
+          payment_method: string
+          prescription_id: string | null
+          subtotal_usd: number
+          tax_usd: number
+          total_usd: number
+        }
+        Insert: {
+          cashier_id?: string | null
+          created_at?: string
+          discount_usd?: number
+          id?: string
+          invoice_no: string
+          patient_id?: string | null
+          payment_method?: string
+          prescription_id?: string | null
+          subtotal_usd?: number
+          tax_usd?: number
+          total_usd?: number
+        }
+        Update: {
+          cashier_id?: string | null
+          created_at?: string
+          discount_usd?: number
+          id?: string
+          invoice_no?: string
+          patient_id?: string | null
+          payment_method?: string
+          prescription_id?: string | null
+          subtotal_usd?: number
+          tax_usd?: number
+          total_usd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicine_sales_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medicine_sales_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medicines: {
+        Row: {
+          barcode: string | null
+          brand: string | null
+          category: string | null
+          created_at: string
+          expiry_date: string | null
+          id: string
+          low_stock_threshold: number
+          name: string
+          price_usd: number
+          stock: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          low_stock_threshold?: number
+          name: string
+          price_usd?: number
+          stock?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          low_stock_threshold?: number
+          name?: string
+          price_usd?: number
+          stock?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      opd_visits: {
+        Row: {
+          bp: string | null
+          chief_complaint: string | null
+          created_at: string
+          doctor_id: string | null
+          height: number | null
+          id: string
+          notes: string | null
+          patient_id: string
+          pulse: number | null
+          spo2: number | null
+          status: string
+          temperature: number | null
+          token_number: number | null
+          updated_at: string
+          visit_date: string
+          weight: number | null
+        }
+        Insert: {
+          bp?: string | null
+          chief_complaint?: string | null
+          created_at?: string
+          doctor_id?: string | null
+          height?: number | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          pulse?: number | null
+          spo2?: number | null
+          status?: string
+          temperature?: number | null
+          token_number?: number | null
+          updated_at?: string
+          visit_date?: string
+          weight?: number | null
+        }
+        Update: {
+          bp?: string | null
+          chief_complaint?: string | null
+          created_at?: string
+          doctor_id?: string | null
+          height?: number | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          pulse?: number | null
+          spo2?: number | null
+          status?: string
+          temperature?: number | null
+          token_number?: number | null
+          updated_at?: string
+          visit_date?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opd_visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          address: string | null
+          blood_group: string | null
+          created_at: string
+          created_by: string | null
+          dob: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          insurance_policy: string | null
+          insurance_provider: string | null
+          notes: string | null
+          patient_code: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          blood_group?: string | null
+          created_at?: string
+          created_by?: string | null
+          dob?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          insurance_policy?: string | null
+          insurance_provider?: string | null
+          notes?: string | null
+          patient_code: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          blood_group?: string | null
+          created_at?: string
+          created_by?: string | null
+          dob?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          insurance_policy?: string | null
+          insurance_provider?: string | null
+          notes?: string | null
+          patient_code?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prescription_items: {
+        Row: {
+          dose: string | null
+          duration: string | null
+          frequency: string | null
+          id: string
+          instructions: string | null
+          item_type: string
+          name: string
+          prescription_id: string
+          route: string | null
+        }
+        Insert: {
+          dose?: string | null
+          duration?: string | null
+          frequency?: string | null
+          id?: string
+          instructions?: string | null
+          item_type: string
+          name: string
+          prescription_id: string
+          route?: string | null
+        }
+        Update: {
+          dose?: string | null
+          duration?: string | null
+          frequency?: string | null
+          id?: string
+          instructions?: string | null
+          item_type?: string
+          name?: string
+          prescription_id?: string
+          route?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_items_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescriptions: {
+        Row: {
+          advice: string | null
+          created_at: string
+          diagnosis: string | null
+          doctor_id: string | null
+          id: string
+          patient_id: string
+          visit_id: string | null
+        }
+        Insert: {
+          advice?: string | null
+          created_at?: string
+          diagnosis?: string | null
+          doctor_id?: string | null
+          id?: string
+          patient_id: string
+          visit_id?: string | null
+        }
+        Update: {
+          advice?: string | null
+          created_at?: string
+          diagnosis?: string | null
+          doctor_id?: string | null
+          id?: string
+          patient_id?: string
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "opd_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_invoice_no: { Args: never; Returns: string }
+      generate_patient_code: { Args: never; Returns: string }
+      get_user_roles: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "admin"
+        | "doctor"
+        | "nurse"
+        | "pharmacist"
+        | "lab_tech"
+        | "accountant"
+        | "receptionist"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +571,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "admin",
+        "doctor",
+        "nurse",
+        "pharmacist",
+        "lab_tech",
+        "accountant",
+        "receptionist",
+      ],
+    },
   },
 } as const
