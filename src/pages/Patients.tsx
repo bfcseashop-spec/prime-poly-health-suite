@@ -60,6 +60,13 @@ export default function Patients() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [confirmDelete, setConfirmDelete] = useState<Patient | null>(null);
+  const [nextCode, setNextCode] = useState<string>("");
+
+  const previewNextCode = async () => {
+    const { count } = await supabase.from("patients").select("*", { count: "exact", head: true });
+    const n = (count ?? 0) + 1;
+    setNextCode(`PD-${String(n).padStart(2, "0")}`);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -69,8 +76,9 @@ export default function Patients() {
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => {
+  const openNew = async () => {
     setEditing(null); setForm(empty); setPhotoFile(null); setPhotoPreview(""); setOpen(true);
+    await previewNextCode();
   };
   const openEdit = (p: Patient) => {
     setEditing(p);
@@ -316,7 +324,16 @@ export default function Patients() {
       {/* Form Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Edit Patient" : "Register New Patient"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit Patient" : "Register New Patient"}</DialogTitle>
+            {!editing && nextCode && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-sm text-muted-foreground">Patient ID:</span>
+                <Badge variant="outline" className="font-mono">{nextCode}</Badge>
+                <span className="text-xs text-muted-foreground">(auto-generated)</span>
+              </div>
+            )}
+          </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
             <div className="md:col-span-2 flex items-center gap-4">
               <Avatar className="h-20 w-20 border-2 border-border">
