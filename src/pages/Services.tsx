@@ -11,9 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Briefcase, Syringe, Package, Plus, Search, Trash2, Pencil, Eye, Layers, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Briefcase, Syringe, Package, Plus, Search, Trash2, Pencil, Eye, Layers, X, Download, Upload, FileSpreadsheet, Barcode as BarcodeIcon, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
+import { exportToExcel, exportToCSV, parseImportFile, downloadTemplate, printBarcodes } from "@/lib/dataIO";
 
 type Service = { id: string; name: string; category: string; price_usd: number; description: string | null; active: boolean };
 type Injection = { id: string; name: string; brand: string | null; dose: string | null; route: string | null; category: string | null; price_usd: number; stock: number; description: string | null; active: boolean };
@@ -32,20 +34,30 @@ export default function Services() {
   // Services
   const [services, setServices] = useState<Service[]>([]);
   const [svcQ, setSvcQ] = useState("");
+  const [svcCat, setSvcCat] = useState("all");
+  const [svcStatus, setSvcStatus] = useState("all");
   const [svcDlg, setSvcDlg] = useState<Partial<Service> | null>(null);
+  const [svcSel, setSvcSel] = useState<Set<string>>(new Set());
 
   // Injections
   const [injs, setInjs] = useState<Injection[]>([]);
   const [injQ, setInjQ] = useState("");
+  const [injRoute, setInjRoute] = useState("all");
+  const [injStatus, setInjStatus] = useState("all");
+  const [injStock, setInjStock] = useState("all");
   const [injDlg, setInjDlg] = useState<Partial<Injection> | null>(null);
+  const [injSel, setInjSel] = useState<Set<string>>(new Set());
 
   // Packages
   const [packages, setPackages] = useState<HPackage[]>([]);
   const [pkgItems, setPkgItems] = useState<Record<string, PItem[]>>({});
   const [pkgQ, setPkgQ] = useState("");
+  const [pkgCat, setPkgCat] = useState("all");
+  const [pkgStatus, setPkgStatus] = useState("all");
   const [pkgDlg, setPkgDlg] = useState<Partial<HPackage> | null>(null);
   const [pkgDlgItems, setPkgDlgItems] = useState<PItem[]>([]);
   const [viewPkg, setViewPkg] = useState<HPackage | null>(null);
+  const [pkgSel, setPkgSel] = useState<Set<string>>(new Set());
 
   // For package builder
   const [labTests, setLabTests] = useState<LabTest[]>([]);
@@ -71,8 +83,15 @@ export default function Services() {
   };
   useEffect(() => { loadAll(); }, []);
 
-  // Service ops
-  const fServices = useMemo(() => services.filter(s => !svcQ || s.name.toLowerCase().includes(svcQ.toLowerCase()) || s.category.toLowerCase().includes(svcQ.toLowerCase())), [services, svcQ]);
+  // ===== Services =====
+  const fServices = useMemo(() => services.filter(s => {
+    const q = svcQ.toLowerCase();
+    const okQ = !q || s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q) || (s.description ?? "").toLowerCase().includes(q);
+    const okC = svcCat === "all" || s.category === svcCat;
+    const okS = svcStatus === "all" || (svcStatus === "active" ? s.active : !s.active);
+    return okQ && okC && okS;
+  }), [services, svcQ, svcCat, svcStatus]);
+
   const saveService = async () => {
     if (!svcDlg?.name) return toast.error("Name required");
     const payload: any = { name: svcDlg.name, category: svcDlg.category ?? "service", price_usd: Number(svcDlg.price_usd ?? 0), description: svcDlg.description ?? null, active: svcDlg.active ?? true };
@@ -86,9 +105,41 @@ export default function Services() {
     if (error) return toast.error(error.message);
     toast.success("Deleted"); loadAll();
   };
+  const bulkDelServices = async () => {
+    if (!svcSel.size) return;
+    if (!confirm(`Delete ${svcSel.size} services?`)) return;
+    const { error } = await supabase.from("service_catalog").delete().in("id", Array.from(svcSel));
+    if (error) return toast.error(error.message);
+    toast.success("Deleted"); setSvcSel(new Set()); loadAll();
+  };
+  const importServices = async (file: File) => {
+    try {
+      const rows = await parseImportFile(file);
+      if (!rows.length) return toast.error("Empty file");
+      const payload = rows.map((r: any) => ({
+        name: String(r.name ?? r.Name ?? "").trim(),
+        category: String(r.category ?? r.Category ?? "service").toLowerCase(),
+        price_usd: Number(r.price_usd ?? r.price ?? r.Price ?? 0),
+        description: r.description ?? r.Description ?? null,
+        active: r.active === undefined ? true : (String(r.active).toLowerCase() === "true" || r.active === 1),
+      })).filter(r => r.name);
+      if (!payload.length) return toast.error("No valid rows (name required)");
+      const { error } = await supabase.from("service_catalog").insert(payload);
+      if (error) return toast.error(error.message);
+      toast.success(`Imported ${payload.length} services`); loadAll();
+    } catch (e: any) { toast.error(e.message ?? "Import failed"); }
+  };
 
-  // Injection ops
-  const fInjs = useMemo(() => injs.filter(i => !injQ || i.name.toLowerCase().includes(injQ.toLowerCase()) || (i.brand ?? "").toLowerCase().includes(injQ.toLowerCase())), [injs, injQ]);
+  // ===== Injections =====
+  const fInjs = useMemo(() => injs.filter(i => {
+    const q = injQ.toLowerCase();
+    const okQ = !q || i.name.toLowerCase().includes(q) || (i.brand ?? "").toLowerCase().includes(q) || (i.dose ?? "").toLowerCase().includes(q);
+    const okR = injRoute === "all" || i.route === injRoute;
+    const okS = injStatus === "all" || (injStatus === "active" ? i.active : !i.active);
+    const okSt = injStock === "all" || (injStock === "low" ? i.stock < 5 : injStock === "out" ? i.stock === 0 : i.stock >= 5);
+    return okQ && okR && okS && okSt;
+  }), [injs, injQ, injRoute, injStatus, injStock]);
+
   const saveInj = async () => {
     if (!injDlg?.name) return toast.error("Name required");
     const payload: any = { name: injDlg.name, brand: injDlg.brand ?? null, dose: injDlg.dose ?? null, route: injDlg.route ?? null, category: injDlg.category ?? "general", price_usd: Number(injDlg.price_usd ?? 0), stock: Number(injDlg.stock ?? 0), description: injDlg.description ?? null, active: injDlg.active ?? true };
@@ -102,9 +153,53 @@ export default function Services() {
     if (error) return toast.error(error.message);
     toast.success("Deleted"); loadAll();
   };
+  const bulkDelInjs = async () => {
+    if (!injSel.size) return;
+    if (!confirm(`Delete ${injSel.size} injections?`)) return;
+    const { error } = await supabase.from("injections" as any).delete().in("id", Array.from(injSel));
+    if (error) return toast.error(error.message);
+    toast.success("Deleted"); setInjSel(new Set()); loadAll();
+  };
+  const importInjections = async (file: File) => {
+    try {
+      const rows = await parseImportFile(file);
+      const payload = rows.map((r: any) => ({
+        name: String(r.name ?? r.Name ?? "").trim(),
+        brand: r.brand ?? r.Brand ?? null,
+        dose: r.dose ?? r.Dose ?? null,
+        route: r.route ?? r.Route ?? null,
+        category: r.category ?? "general",
+        price_usd: Number(r.price_usd ?? r.price ?? 0),
+        stock: Number(r.stock ?? 0),
+        description: r.description ?? null,
+        active: r.active === undefined ? true : (String(r.active).toLowerCase() === "true" || r.active === 1),
+      })).filter(r => r.name);
+      if (!payload.length) return toast.error("No valid rows");
+      const { error } = await supabase.from("injections" as any).insert(payload);
+      if (error) return toast.error(error.message);
+      toast.success(`Imported ${payload.length} injections`); loadAll();
+    } catch (e: any) { toast.error(e.message ?? "Import failed"); }
+  };
 
-  // Package ops
-  const fPkgs = useMemo(() => packages.filter(p => !pkgQ || p.name.toLowerCase().includes(pkgQ.toLowerCase()) || p.category.toLowerCase().includes(pkgQ.toLowerCase())), [packages, pkgQ]);
+  const printInjBarcodes = (ids?: string[]) => {
+    const list = ids ? injs.filter(i => ids.includes(i.id)) : injs.filter(i => injSel.has(i.id));
+    if (!list.length) return toast.error("Select at least one");
+    printBarcodes(list.map(i => ({ code: i.id.slice(0, 12).toUpperCase(), name: `${i.name}${i.dose ? ` ${i.dose}` : ""}`, price: i.price_usd })), "Injection Barcodes");
+  };
+  const printSvcBarcodes = (ids?: string[]) => {
+    const list = ids ? services.filter(s => ids.includes(s.id)) : services.filter(s => svcSel.has(s.id));
+    if (!list.length) return toast.error("Select at least one");
+    printBarcodes(list.map(s => ({ code: s.id.slice(0, 12).toUpperCase(), name: s.name, price: s.price_usd })), "Service Barcodes");
+  };
+
+  // ===== Packages =====
+  const fPkgs = useMemo(() => packages.filter(p => {
+    const q = pkgQ.toLowerCase();
+    const okQ = !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || (p.code ?? "").toLowerCase().includes(q);
+    const okC = pkgCat === "all" || p.category === pkgCat;
+    const okS = pkgStatus === "all" || (pkgStatus === "active" ? p.active : !p.active);
+    return okQ && okC && okS;
+  }), [packages, pkgQ, pkgCat, pkgStatus]);
 
   const openPkgDlg = (p?: HPackage) => {
     if (p) {
@@ -181,30 +276,54 @@ export default function Services() {
         {/* SERVICES */}
         <TabsContent value="services" className="space-y-4">
           <Card>
-            <CardHeader className="flex-row items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search services..." className="pl-9" value={svcQ} onChange={e => setSvcQ(e.target.value)} />
+            <CardHeader className="flex-col gap-3 items-stretch">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search services..." className="pl-9" value={svcQ} onChange={e => setSvcQ(e.target.value)} />
+                </div>
+                <Select value={svcCat} onValueChange={setSvcCat}>
+                  <SelectTrigger className="w-[150px]"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Categories</SelectItem>{SERVICE_CATS.map(c => <SelectItem key={c} value={c} className="capitalize">{c.replace("_"," ")}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={svcStatus} onValueChange={setSvcStatus}>
+                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
+                </Select>
+                <Toolbar
+                  selectionCount={svcSel.size}
+                  onAdd={() => setSvcDlg({ active: true, category: "service", price_usd: 0 })}
+                  onImport={importServices}
+                  onExportCSV={() => exportToCSV(fServices.map(({ id, ...r }) => r), "services")}
+                  onExportXLSX={() => exportToExcel(fServices.map(({ id, ...r }) => r), "services")}
+                  onDownloadTemplate={() => downloadTemplate(["name","category","price_usd","description","active"], "services_template", { name:"Sample Service", category:"consultation", price_usd:50, description:"", active:true })}
+                  onPrintBarcode={() => printSvcBarcodes()}
+                  onBulkDelete={bulkDelServices}
+                />
               </div>
-              <Button onClick={() => setSvcDlg({ active: true, category: "service", price_usd: 0 })}><Plus className="h-4 w-4" /> Add Service</Button>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow>
+                  <TableHead className="w-10"><Checkbox checked={fServices.length > 0 && fServices.every(s => svcSel.has(s.id))} onCheckedChange={(c) => setSvcSel(c ? new Set(fServices.map(s => s.id)) : new Set())} /></TableHead>
+                  <TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                </TableRow></TableHeader>
                 <TableBody>
                   {fServices.map(s => (
-                    <TableRow key={s.id}>
+                    <TableRow key={s.id} data-state={svcSel.has(s.id) ? "selected" : undefined}>
+                      <TableCell><Checkbox checked={svcSel.has(s.id)} onCheckedChange={(c) => { const n = new Set(svcSel); c ? n.add(s.id) : n.delete(s.id); setSvcSel(n); }} /></TableCell>
                       <TableCell><div className="font-medium">{s.name}</div>{s.description && <div className="text-xs text-muted-foreground">{s.description}</div>}</TableCell>
                       <TableCell><Badge variant="secondary" className="capitalize">{s.category.replace("_", " ")}</Badge></TableCell>
                       <TableCell className="text-right font-semibold">{fmtUSD(s.price_usd)}</TableCell>
                       <TableCell>{s.active ? <Badge variant="outline" className="bg-success/15 text-success border-success/30">Active</Badge> : <Badge variant="outline">Inactive</Badge>}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" onClick={() => setSvcDlg(s)}><Pencil className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => delService(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => setSvcDlg(s)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => printSvcBarcodes([s.id])} title="Print Barcode"><BarcodeIcon className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => delService(s.id)} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!fServices.length && <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">No services yet</TableCell></TableRow>}
+                  {!fServices.length && <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No services match your filters</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -214,19 +333,46 @@ export default function Services() {
         {/* INJECTIONS */}
         <TabsContent value="injections" className="space-y-4">
           <Card>
-            <CardHeader className="flex-row items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search injections..." className="pl-9" value={injQ} onChange={e => setInjQ(e.target.value)} />
+            <CardHeader className="flex-col gap-3 items-stretch">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search injections..." className="pl-9" value={injQ} onChange={e => setInjQ(e.target.value)} />
+                </div>
+                <Select value={injRoute} onValueChange={setInjRoute}>
+                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Routes</SelectItem>{INJ_ROUTES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={injStock} onValueChange={setInjStock}>
+                  <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Stock</SelectItem><SelectItem value="in">In Stock</SelectItem><SelectItem value="low">Low ({"<"}5)</SelectItem><SelectItem value="out">Out of Stock</SelectItem></SelectContent>
+                </Select>
+                <Select value={injStatus} onValueChange={setInjStatus}>
+                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
+                </Select>
+                <Toolbar
+                  selectionCount={injSel.size}
+                  onAdd={() => setInjDlg({ active: true, route: "IM", price_usd: 0, stock: 0 })}
+                  onImport={importInjections}
+                  onExportCSV={() => exportToCSV(fInjs.map(({ id, ...r }) => r), "injections")}
+                  onExportXLSX={() => exportToExcel(fInjs.map(({ id, ...r }) => r), "injections")}
+                  onDownloadTemplate={() => downloadTemplate(["name","brand","dose","route","category","price_usd","stock","description","active"], "injections_template", { name:"Paracetamol Inj", brand:"Sample", dose:"500mg/1ml", route:"IM", category:"general", price_usd:5, stock:100, description:"", active:true })}
+                  onPrintBarcode={() => printInjBarcodes()}
+                  onBulkDelete={bulkDelInjs}
+                />
               </div>
-              <Button onClick={() => setInjDlg({ active: true, route: "IM", price_usd: 0, stock: 0 })}><Plus className="h-4 w-4" /> Add Injection</Button>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Brand</TableHead><TableHead>Dose</TableHead><TableHead>Route</TableHead><TableHead>Stock</TableHead><TableHead className="text-right">Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow>
+                  <TableHead className="w-10"><Checkbox checked={fInjs.length > 0 && fInjs.every(i => injSel.has(i.id))} onCheckedChange={(c) => setInjSel(c ? new Set(fInjs.map(i => i.id)) : new Set())} /></TableHead>
+                  <TableHead>Name</TableHead><TableHead>Brand</TableHead><TableHead>Dose</TableHead><TableHead>Route</TableHead><TableHead>Stock</TableHead><TableHead className="text-right">Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                </TableRow></TableHeader>
                 <TableBody>
                   {fInjs.map(i => (
-                    <TableRow key={i.id}>
+                    <TableRow key={i.id} data-state={injSel.has(i.id) ? "selected" : undefined}>
+                      <TableCell><Checkbox checked={injSel.has(i.id)} onCheckedChange={(c) => { const n = new Set(injSel); c ? n.add(i.id) : n.delete(i.id); setInjSel(n); }} /></TableCell>
                       <TableCell className="font-medium">{i.name}</TableCell>
                       <TableCell className="text-sm">{i.brand ?? "—"}</TableCell>
                       <TableCell className="text-sm">{i.dose ?? "—"}</TableCell>
@@ -235,12 +381,13 @@ export default function Services() {
                       <TableCell className="text-right font-semibold">{fmtUSD(i.price_usd)}</TableCell>
                       <TableCell>{i.active ? <Badge variant="outline" className="bg-success/15 text-success border-success/30">Active</Badge> : <Badge variant="outline">Inactive</Badge>}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" onClick={() => setInjDlg(i)}><Pencil className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => delInj(i.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => setInjDlg(i)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => printInjBarcodes([i.id])} title="Print Barcode"><BarcodeIcon className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => delInj(i.id)} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!fInjs.length && <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">No injections yet</TableCell></TableRow>}
+                  {!fInjs.length && <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">No injections match your filters</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -250,12 +397,23 @@ export default function Services() {
         {/* PACKAGES */}
         <TabsContent value="packages" className="space-y-4">
           <Card>
-            <CardHeader className="flex-row items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search packages..." className="pl-9" value={pkgQ} onChange={e => setPkgQ(e.target.value)} />
+            <CardHeader className="flex-col gap-3 items-stretch">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search packages..." className="pl-9" value={pkgQ} onChange={e => setPkgQ(e.target.value)} />
+                </div>
+                <Select value={pkgCat} onValueChange={setPkgCat}>
+                  <SelectTrigger className="w-[150px]"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Categories</SelectItem>{PKG_CATS.map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={pkgStatus} onValueChange={setPkgStatus}>
+                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
+                </Select>
+                <Button variant="outline" onClick={() => exportToExcel(fPkgs.map(({ id, ...r }) => r), "packages")}><Download className="h-4 w-4" /> Export</Button>
+                <Button onClick={() => openPkgDlg()}><Plus className="h-4 w-4" /> New Package</Button>
               </div>
-              <Button onClick={() => openPkgDlg()}><Plus className="h-4 w-4" /> New Package</Button>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -467,3 +625,28 @@ function ItemPicker({ items, onAdd }: { items: { id: string; name: string; price
     </div>
   );
 }
+
+function Toolbar({ selectionCount, onAdd, onImport, onExportCSV, onExportXLSX, onDownloadTemplate, onPrintBarcode, onBulkDelete }: {
+  selectionCount: number; onAdd: () => void; onImport: (f: File) => void; onExportCSV: () => void; onExportXLSX: () => void; onDownloadTemplate: () => void; onPrintBarcode: () => void; onBulkDelete: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 ml-auto">
+      {selectionCount > 0 && (
+        <>
+          <Badge variant="secondary">{selectionCount} selected</Badge>
+          <Button size="sm" variant="outline" onClick={onPrintBarcode}><BarcodeIcon className="h-4 w-4" /> Print Barcodes</Button>
+          <Button size="sm" variant="destructive" onClick={onBulkDelete}><Trash2 className="h-4 w-4" /> Delete</Button>
+        </>
+      )}
+      <Button size="sm" variant="outline" onClick={onDownloadTemplate} title="Download import template"><FileSpreadsheet className="h-4 w-4" /> Template</Button>
+      <label>
+        <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { onImport(f); e.currentTarget.value = ""; } }} />
+        <Button size="sm" variant="outline" asChild><span className="cursor-pointer"><Upload className="h-4 w-4" /> Import</span></Button>
+      </label>
+      <Button size="sm" variant="outline" onClick={onExportXLSX}><Download className="h-4 w-4" /> Excel</Button>
+      <Button size="sm" variant="outline" onClick={onExportCSV}><Download className="h-4 w-4" /> CSV</Button>
+      <Button size="sm" onClick={onAdd}><Plus className="h-4 w-4" /> Add</Button>
+    </div>
+  );
+}
+
