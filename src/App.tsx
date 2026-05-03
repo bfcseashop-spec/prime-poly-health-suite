@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
+import PatientProfile from "./pages/PatientProfile";
 import OPD from "./pages/OPD";
 import Prescriptions from "./pages/Prescriptions";
 import Pharmacy from "./pages/Pharmacy";
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<Shell><Dashboard /></Shell>} />
               <Route path="/patients" element={<Shell><Patients /></Shell>} />
+              <Route path="/patients/:id" element={<Shell><PatientProfile /></Shell>} />
               <Route path="/opd" element={<Shell><OPD /></Shell>} />
               <Route path="/prescriptions" element={<ProtectedRoute roles={["doctor"]}><AppLayout><Prescriptions /></AppLayout></ProtectedRoute>} />
               <Route path="/pharmacy" element={<ProtectedRoute roles={["pharmacist"]}><AppLayout><Pharmacy /></AppLayout></ProtectedRoute>} />
