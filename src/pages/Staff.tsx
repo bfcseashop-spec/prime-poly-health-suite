@@ -69,6 +69,7 @@ export default function Staff() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewRow, setViewRow] = useState<any | null>(null);
 
   const load = async () => {
     const { data, error } = await (supabase.from("staff_members" as any) as any)
