@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,233 +6,277 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Trash2, Upload, Image as ImageIcon, ArrowDownCircle, ArrowUpCircle, Wallet } from "lucide-react";
-import { fmtUSD } from "@/lib/currency";
+import { Plus, Download, CreditCard, DollarSign, TrendingUp } from "lucide-react";
+import { fmtUSD, fmtKHR } from "@/lib/currency";
 import { toast } from "sonner";
 
-type Txn = {
-  id: string;
-  txn_date: string;
-  txn_type: string;
-  bank_name: string;
-  account_number: string | null;
-  amount_usd: number;
-  reference_no: string | null;
-  description: string | null;
-  receipt_url: string | null;
-  created_at: string;
+type Pay = { id: string; sale_id: string; amount_usd: number; payment_method: string; reference: string | null; paid_on: string };
+type Manual = { id: string; txn_date: string; txn_type: string; bank_name: string; amount_usd: number; reference_no: string | null; description: string | null };
+
+const RANGES = [
+  { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "month", label: "This month" },
+  { value: "all", label: "All time" },
+  { value: "custom", label: "Custom" },
+];
+
+function getRange(r: string, from?: string, to?: string): { from: string; to: string } {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const today = d.toISOString().slice(0, 10);
+  const fmt = (x: Date) => x.toISOString().slice(0, 10);
+  if (r === "today") return { from: today, to: today };
+  if (r === "yesterday") { const y = new Date(d); y.setDate(d.getDate() - 1); return { from: fmt(y), to: fmt(y) }; }
+  if (r === "7d") { const s = new Date(d); s.setDate(d.getDate() - 6); return { from: fmt(s), to: today }; }
+  if (r === "30d") { const s = new Date(d); s.setDate(d.getDate() - 29); return { from: fmt(s), to: today }; }
+  if (r === "month") { const s = new Date(d.getFullYear(), d.getMonth(), 1); return { from: fmt(s), to: today }; }
+  if (r === "custom") return { from: from || today, to: to || today };
+  return { from: "1970-01-01", to: today };
+}
+
+const palette: Record<string, { border: string; text: string; bg: string }> = {
+  aba:        { border: "border-blue-300",    text: "text-blue-600",    bg: "bg-blue-50/60 dark:bg-blue-950/20" },
+  acleda:     { border: "border-green-300",   text: "text-green-600",   bg: "bg-green-50/60 dark:bg-green-950/20" },
+  cash:       { border: "border-yellow-300",  text: "text-yellow-600",  bg: "bg-yellow-50/60 dark:bg-yellow-950/20" },
+  due:        { border: "border-orange-300",  text: "text-orange-600",  bg: "bg-orange-50/60 dark:bg-orange-950/20" },
+  card:       { border: "border-purple-300",  text: "text-purple-600",  bg: "bg-purple-50/60 dark:bg-purple-950/20" },
+  cash_aba:   { border: "border-indigo-300",  text: "text-indigo-600",  bg: "bg-indigo-50/60 dark:bg-indigo-950/20" },
+  cash_acleda:{ border: "border-teal-300",    text: "text-teal-600",    bg: "bg-teal-50/60 dark:bg-teal-950/20" },
+  default:    { border: "border-slate-300",   text: "text-slate-600",   bg: "bg-slate-50/60 dark:bg-slate-950/20" },
 };
 
-const TYPES = ["deposit", "withdrawal", "transfer", "fee", "interest"];
-
-const empty = {
-  txn_date: new Date().toISOString().slice(0, 10),
-  txn_type: "deposit",
-  bank_name: "",
-  account_number: "",
-  amount_usd: "",
-  reference_no: "",
-  description: "",
-  receipt_url: "",
+const prettyMethod = (m: string) => m.split(/[\s_]+/).map(w => w[0]?.toUpperCase() + w.slice(1)).join(" ");
+const colorKey = (m: string) => {
+  const k = m.toLowerCase().replace(/\s+/g, "_");
+  return palette[k] ? k : "default";
 };
+
+const FIXED_METHODS = ["aba", "acleda", "cash", "due", "card", "cash_and_aba", "cash_and_acleda"];
 
 export default function BankTransactions() {
-  const [rows, setRows] = useState<Txn[]>([]);
+  const [range, setRange] = useState("today");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [pays, setPays] = useState<Pay[]>([]);
+  const [sales, setSales] = useState<{ id: string; due_usd: number; created_at: string }[]>([]);
+  const [manuals, setManuals] = useState<Manual[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ ...empty });
-  const [filter, setFilter] = useState({ bank: "", type: "all", from: "", to: "" });
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState({ txn_date: new Date().toISOString().slice(0, 10), txn_type: "deposit", bank_name: "Cash", amount_usd: "", reference_no: "", description: "" });
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("bank_transactions").select("*").order("txn_date", { ascending: false }).limit(1000);
-    if (error) toast.error(error.message);
-    setRows((data as any) || []);
+    const [{ data: p }, { data: s }, { data: m }] = await Promise.all([
+      supabase.from("invoice_payments" as any).select("id, sale_id, amount_usd, payment_method, reference, paid_on").limit(5000),
+      supabase.from("medicine_sales").select("id, due_usd, created_at, payment_method").limit(5000),
+      supabase.from("bank_transactions").select("*").limit(2000),
+    ]);
+    setPays((p as any) || []);
+    setSales((s as any) || []);
+    setManuals((m as any) || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
-  const filtered = useMemo(() => rows.filter(r => {
-    if (filter.bank && !r.bank_name.toLowerCase().includes(filter.bank.toLowerCase())) return false;
-    if (filter.type !== "all" && r.txn_type !== filter.type) return false;
-    if (filter.from && r.txn_date < filter.from) return false;
-    if (filter.to && r.txn_date > filter.to) return false;
-    return true;
-  }), [rows, filter]);
+  const { from, to } = useMemo(() => getRange(range, customFrom, customTo), [range, customFrom, customTo]);
 
-  const totals = useMemo(() => {
-    let inflow = 0, outflow = 0;
-    filtered.forEach(r => {
-      const a = Number(r.amount_usd || 0);
-      if (r.txn_type === "deposit" || r.txn_type === "interest") inflow += a;
-      else outflow += a;
-    });
-    return { inflow, outflow, net: inflow - outflow };
-  }, [filtered]);
-
-  const handleImage = async (file: File) => {
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error } = await supabase.storage.from("bank-receipts").upload(path, file);
-    if (error) { toast.error(error.message); return; }
-    const { data } = supabase.storage.from("bank-receipts").getPublicUrl(path);
-    setForm(f => ({ ...f, receipt_url: data.publicUrl }));
-    toast.success("Receipt uploaded");
+  const inRange = (date: string) => {
+    const d = date.slice(0, 10);
+    return d >= from && d <= to;
   };
 
+  const filteredPays = useMemo(() => pays.filter(p => inRange(p.paid_on)), [pays, from, to]);
+  const filteredSales = useMemo(() => sales.filter(s => inRange(s.created_at)), [sales, from, to]);
+  const filteredManuals = useMemo(() => manuals.filter(m => inRange(m.txn_date)), [manuals, from, to]);
+
+  const breakdown = useMemo(() => {
+    const map: Record<string, { amount: number; count: number }> = {};
+    FIXED_METHODS.forEach(k => { map[k] = { amount: 0, count: 0 }; });
+    filteredPays.forEach(p => {
+      const k = (p.payment_method || "cash").toLowerCase().replace(/\s+/g, "_");
+      if (!map[k]) map[k] = { amount: 0, count: 0 };
+      map[k].amount += Number(p.amount_usd || 0);
+      map[k].count += 1;
+    });
+    // due bucket: outstanding due across sales in range
+    const dueAmt = filteredSales.reduce((a, s) => a + Number(s.due_usd || 0), 0);
+    const dueCnt = filteredSales.filter(s => Number(s.due_usd || 0) > 0).length;
+    map["due"] = { amount: dueAmt, count: dueCnt };
+    // include manual entries as their own pseudo-method bucket
+    filteredManuals.forEach(m => {
+      const k = (m.bank_name || "manual").toLowerCase().replace(/\s+/g, "_");
+      if (!map[k]) map[k] = { amount: 0, count: 0 };
+      const sign = (m.txn_type === "withdrawal" || m.txn_type === "fee") ? -1 : 1;
+      map[k].amount += sign * Number(m.amount_usd || 0);
+      map[k].count += 1;
+    });
+    return map;
+  }, [filteredPays, filteredSales, filteredManuals]);
+
+  const totalRevenue = useMemo(() => filteredPays.reduce((a, p) => a + Number(p.amount_usd || 0), 0)
+    + filteredManuals.reduce((a, m) => a + ((m.txn_type === "withdrawal" || m.txn_type === "fee") ? -1 : 1) * Number(m.amount_usd || 0), 0), [filteredPays, filteredManuals]);
+
+  const totalTxn = filteredPays.length + filteredManuals.length;
+  const avgTxn = totalTxn > 0 ? totalRevenue / totalTxn : 0;
+
   const save = async () => {
-    if (!form.bank_name.trim() || !form.amount_usd) {
-      toast.error("Bank name and amount are required");
-      return;
-    }
+    if (!form.bank_name.trim() || !form.amount_usd) { toast.error("Bank/source and amount are required"); return; }
     const { data: u } = await supabase.auth.getUser();
-    const payload = {
+    const { error } = await supabase.from("bank_transactions").insert({
       txn_date: form.txn_date,
       txn_type: form.txn_type,
       bank_name: form.bank_name.trim(),
-      account_number: form.account_number || null,
       amount_usd: Number(form.amount_usd),
       reference_no: form.reference_no || null,
       description: form.description || null,
-      receipt_url: form.receipt_url || null,
       created_by: u.user?.id,
-    };
-    const { error } = await supabase.from("bank_transactions").insert(payload);
+    });
     if (error) { toast.error(error.message); return; }
-    toast.success("Transaction recorded");
+    toast.success("Manual amount added");
     setOpen(false);
-    setForm({ ...empty });
+    setForm({ txn_date: new Date().toISOString().slice(0, 10), txn_type: "deposit", bank_name: "Cash", amount_usd: "", reference_no: "", description: "" });
     load();
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete this transaction?")) return;
-    const { error } = await supabase.from("bank_transactions").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    setRows(rs => rs.filter(r => r.id !== id));
+  const exportCSV = () => {
+    const rows = [["Date", "Method/Bank", "Type", "Amount USD", "Reference", "Source"]];
+    filteredPays.forEach(p => rows.push([p.paid_on, p.payment_method, "payment", String(p.amount_usd), p.reference || "", "invoice"]));
+    filteredManuals.forEach(m => rows.push([m.txn_date, m.bank_name, m.txn_type, String(m.amount_usd), m.reference_no || "", "manual"]));
+    const csv = rows.map(r => r.map(c => `"${(c ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `bank-statement-${from}_to_${to}.csv`; a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const typeBadge = (t: string) => {
-    const map: Record<string, string> = {
-      deposit: "bg-green-500/10 text-green-700 dark:text-green-400",
-      interest: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-      withdrawal: "bg-red-500/10 text-red-700 dark:text-red-400",
-      fee: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
-      transfer: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-    };
-    return <Badge variant="outline" className={map[t] || ""}>{t}</Badge>;
-  };
+  const cards = useMemo(() => {
+    const keys = Object.keys(breakdown);
+    // ensure consistent ordering: fixed first, then extras
+    const order = [...FIXED_METHODS, ...keys.filter(k => !FIXED_METHODS.includes(k))];
+    return order.filter(k => breakdown[k]).map(k => ({ key: k, ...breakdown[k] }));
+  }, [breakdown]);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2"><Wallet className="h-7 w-7 text-primary" />Bank Transactions</h1>
-          <p className="text-muted-foreground text-sm">Record and track all bank deposits, withdrawals, transfers and fees.</p>
+          <h1 className="text-3xl font-bold">Bank Statement</h1>
+          <p className="text-muted-foreground text-sm">Payment dashboard and sales breakdown by payment method</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-1" />Add Transaction</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-xl">
-            <DialogHeader><DialogTitle>New Bank Transaction</DialogTitle></DialogHeader>
-            <ScrollArea className="max-h-[70vh] pr-3">
+        <div className="flex items-center gap-2">
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white"><Plus className="h-4 w-4 mr-1" />Add Manual Amount</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Manual Amount</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Date</Label><Input type="date" value={form.txn_date} onChange={e => setForm({ ...form, txn_date: e.target.value })} /></div>
                 <div>
                   <Label>Type</Label>
                   <Select value={form.txn_type} onValueChange={v => setForm({ ...form, txn_type: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      {["deposit", "withdrawal", "transfer", "fee", "interest"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Bank Name *</Label><Input value={form.bank_name} onChange={e => setForm({ ...form, bank_name: e.target.value })} placeholder="e.g. ABA Bank" /></div>
-                <div><Label>Account Number</Label><Input value={form.account_number} onChange={e => setForm({ ...form, account_number: e.target.value })} /></div>
-                <div><Label>Amount (USD) *</Label><Input type="number" step="0.01" value={form.amount_usd} onChange={e => setForm({ ...form, amount_usd: e.target.value })} /></div>
-                <div><Label>Reference / Cheque No.</Label><Input value={form.reference_no} onChange={e => setForm({ ...form, reference_no: e.target.value })} /></div>
-                <div className="col-span-2"><Label>Description</Label><Textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
                 <div className="col-span-2">
-                  <Label>Receipt Image</Label>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={async e => { const f = e.target.files?.[0]; if (f) await handleImage(f); if (fileRef.current) fileRef.current.value = ""; }} />
-                  <div className="flex items-center gap-2 mt-1">
-                    <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4 mr-1" />Upload</Button>
-                    {form.receipt_url && <a href={form.receipt_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">View uploaded</a>}
-                  </div>
-                  {form.receipt_url && <img src={form.receipt_url} alt="receipt" className="mt-2 max-h-40 rounded border" />}
+                  <Label>Bank / Method</Label>
+                  <Input list="bank-options" value={form.bank_name} onChange={e => setForm({ ...form, bank_name: e.target.value })} placeholder="ABA, Acleda, Cash..." />
+                  <datalist id="bank-options">
+                    <option value="ABA" /><option value="Acleda" /><option value="Cash" /><option value="Card" /><option value="Cash and ABA" /><option value="Cash and Acleda" />
+                  </datalist>
                 </div>
+                <div><Label>Amount (USD)</Label><Input type="number" step="0.01" value={form.amount_usd} onChange={e => setForm({ ...form, amount_usd: e.target.value })} /></div>
+                <div><Label>Reference</Label><Input value={form.reference_no} onChange={e => setForm({ ...form, reference_no: e.target.value })} /></div>
+                <div className="col-span-2"><Label>Description</Label><Textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
               </div>
-            </ScrollArea>
-            <DialogFooter><Button onClick={save}>Save Transaction</Button></DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter><Button onClick={save}>Save</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button variant="outline" onClick={exportCSV}><Download className="h-4 w-4 mr-1" />Export Statement</Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2 text-green-600"><ArrowDownCircle className="h-4 w-4" />Total Inflow</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{fmtUSD(totals.inflow)}</div></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2 text-red-600"><ArrowUpCircle className="h-4 w-4" />Total Outflow</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{fmtUSD(totals.outflow)}</div></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Wallet className="h-4 w-4" />Net</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${totals.net >= 0 ? "text-green-600" : "text-red-600"}`}>{fmtUSD(totals.net)}</div></CardContent></Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap gap-3 items-end">
-            <div><Label className="text-xs">Bank</Label><Input className="h-9 w-44" placeholder="Search bank" value={filter.bank} onChange={e => setFilter({ ...filter, bank: e.target.value })} /></div>
-            <div>
-              <Label className="text-xs">Type</Label>
-              <Select value={filter.type} onValueChange={v => setFilter({ ...filter, type: v })}>
-                <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All</SelectItem>{TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+      <Card className="bg-blue-50/50 dark:bg-blue-950/10 border-blue-100">
+        <CardHeader className="pb-2"><CardTitle className="text-base">Filter by Date Range</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-1">
+              <Label className="text-xs text-muted-foreground">Date Range</Label>
+              <Select value={range} onValueChange={setRange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{RANGES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label className="text-xs">From</Label><Input type="date" className="h-9" value={filter.from} onChange={e => setFilter({ ...filter, from: e.target.value })} /></div>
-            <div><Label className="text-xs">To</Label><Input type="date" className="h-9" value={filter.to} onChange={e => setFilter({ ...filter, to: e.target.value })} /></div>
-            <Button variant="ghost" size="sm" onClick={() => setFilter({ bank: "", type: "all", from: "", to: "" })}>Reset</Button>
+            {range === "custom" && (
+              <>
+                <div><Label className="text-xs text-muted-foreground">From</Label><Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} /></div>
+                <div><Label className="text-xs text-muted-foreground">To</Label><Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} /></div>
+              </>
+            )}
           </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50/40 dark:from-green-950/20 dark:to-emerald-950/10">
+          <CardContent className="p-5 flex items-start justify-between">
+            <div>
+              <div className="text-xs font-medium text-muted-foreground">Total Revenue</div>
+              <div className="text-3xl font-bold text-green-600 mt-1">{fmtUSD(totalRevenue)}</div>
+              <div className="text-xs text-muted-foreground mt-1">{fmtKHR(totalRevenue)}</div>
+              <div className="text-xs text-muted-foreground mt-2">{filteredPays.length + filteredManuals.length} completed transactions</div>
+            </div>
+            <DollarSign className="h-6 w-6 text-green-500" />
+          </CardContent>
+        </Card>
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50/40 dark:from-blue-950/20 dark:to-cyan-950/10">
+          <CardContent className="p-5 flex items-start justify-between">
+            <div>
+              <div className="text-xs font-medium text-muted-foreground">Total Transactions</div>
+              <div className="text-3xl font-bold text-blue-600 mt-1">{totalTxn}</div>
+              <div className="text-xs text-muted-foreground mt-1">Completed orders</div>
+              <div className="text-xs text-muted-foreground mt-2">Avg: {fmtUSD(avgTxn)} per transaction</div>
+            </div>
+            <TrendingUp className="h-6 w-6 text-blue-500" />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-gradient-to-br from-slate-50 to-rose-50/30 dark:from-slate-950/20 dark:to-rose-950/10">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Payment Dashboard</CardTitle>
+          <p className="text-xs text-muted-foreground">Sales breakdown by payment method</p>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[55vh]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Bank</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Receipt</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
-                  : filtered.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No transactions yet</TableCell></TableRow>
-                  : filtered.map(r => (
-                    <TableRow key={r.id}>
-                      <TableCell>{r.txn_date}</TableCell>
-                      <TableCell>{typeBadge(r.txn_type)}</TableCell>
-                      <TableCell className="font-medium">{r.bank_name}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{r.account_number || "—"}</TableCell>
-                      <TableCell className="text-xs">{r.reference_no || "—"}</TableCell>
-                      <TableCell className="max-w-[240px] truncate text-xs">{r.description || "—"}</TableCell>
-                      <TableCell className={`text-right font-semibold ${(r.txn_type === "deposit" || r.txn_type === "interest") ? "text-green-600" : "text-red-600"}`}>
-                        {(r.txn_type === "deposit" || r.txn_type === "interest") ? "+" : "-"}{fmtUSD(Number(r.amount_usd))}
-                      </TableCell>
-                      <TableCell>
-                        {r.receipt_url ? <a href={r.receipt_url} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-xs"><ImageIcon className="h-3 w-3" />View</a> : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell><Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+          {loading ? (
+            <div className="text-center py-10 text-muted-foreground">Loading…</div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {cards.map(c => {
+                const col = palette[colorKey(c.key)];
+                return (
+                  <Card key={c.key} className={`border-2 ${col.border} ${col.bg}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded border bg-background/60">{prettyMethod(c.key)}</span>
+                        <CreditCard className={`h-4 w-4 ${col.text}`} />
+                      </div>
+                      <div className={`text-2xl font-bold mt-3 ${col.text}`}>{fmtUSD(c.amount)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{fmtKHR(c.amount)}</div>
+                      <div className="text-xs text-muted-foreground mt-2">{c.count} transaction{c.count === 1 ? "" : "s"}</div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
