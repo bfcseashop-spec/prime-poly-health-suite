@@ -379,7 +379,7 @@ export default function IPD() {
                         <TableCell>
                           <div className="flex gap-1.5 justify-end">
                             <Button size="sm" variant="outline" onClick={() => openHistory(a)} title="Transfer history">
-                              <History className="h-3 w-3" />
+                              <HistoryIcon className="h-3 w-3" />
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => openTransfer(a)}>
                               <ArrowRightLeft className="h-3 w-3 mr-1" />Transfer
