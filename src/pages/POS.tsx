@@ -207,7 +207,7 @@ export default function POS() {
 
   const checkout = async (markAsDue = false) => {
     if (cart.length === 0) return toast.error("Cart is empty");
-    const validSplits = splits.filter(s => Number(s.amount) > 0);
+    const validSplits = effectiveSplits.filter(s => Number(s.amount) > 0);
     const paid = validSplits.reduce((a, s) => a + Number(s.amount), 0);
     const remaining = +(total - paid).toFixed(2);
 
