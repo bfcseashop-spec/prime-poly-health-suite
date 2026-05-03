@@ -384,10 +384,53 @@ export default function Staff() {
                     <p className="text-[10px] uppercase text-muted-foreground">Status</p>
                     <Badge className={cn("capitalize", viewRow.status === "active" ? "bg-success/15 text-success border-success/30" : "bg-muted text-muted-foreground")}>{viewRow.status}</Badge>
                   </div>
+                  {viewRow.telegram_id && (
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground">Telegram</p>
+                      <p className="flex items-center gap-1.5"><Send className="h-3.5 w-3.5 text-sky-500" />{viewRow.telegram_id}</p>
+                    </div>
+                  )}
+                  {viewRow.day_off && (
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground">Day Off</p>
+                      <p className="flex items-center gap-1.5 text-rose-600"><CalIcon className="h-3.5 w-3.5" />{viewRow.day_off}</p>
+                    </div>
+                  )}
                   <div className="col-span-2">
                     <p className="text-[10px] uppercase text-muted-foreground">Monthly Salary</p>
                     <p className="text-lg font-bold text-primary">{fmtUSD(Number(viewRow.monthly_salary_usd || 0))}</p>
                   </div>
+                  {viewRow.duty_schedule && Object.keys(viewRow.duty_schedule || {}).length > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-[10px] uppercase text-muted-foreground mb-1.5 flex items-center gap-1"><CalIcon className="h-3 w-3" />Duty Calendar</p>
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {DAYS.map(day => {
+                          const slot = (viewRow.duty_schedule || {})[day];
+                          const isOff = viewRow.day_off?.toLowerCase().includes(day.toLowerCase());
+                          return (
+                            <div key={day} className={cn(
+                              "rounded-lg border p-1.5 text-center text-[10px]",
+                              isOff ? "bg-rose-50 border-rose-200 text-rose-600" :
+                                slot ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-muted/30 text-muted-foreground"
+                            )}>
+                              <div className="font-semibold">{day}</div>
+                              <div className="truncate">{isOff ? "Off" : slot || "—"}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {(viewRow.leave_from || viewRow.leave_to) && (
+                    <div className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+                      <p className="text-[10px] uppercase text-amber-700 font-semibold">On Leave</p>
+                      <p className="text-xs text-amber-700/90 mt-0.5">
+                        {viewRow.leave_from && format(new Date(viewRow.leave_from), "PP")}
+                        {viewRow.leave_to && ` → ${format(new Date(viewRow.leave_to), "PP")}`}
+                        {viewRow.leave_reason && ` · ${viewRow.leave_reason}`}
+                      </p>
+                    </div>
+                  )}
                   {viewRow.address && (
                     <div className="col-span-2">
                       <p className="text-[10px] uppercase text-muted-foreground">Address</p>
