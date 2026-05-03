@@ -57,7 +57,7 @@ export default function Medicines() {
   const [editing, setEditing] = useState<Med | null>(null);
   const [form, setForm] = useState<any>(empty);
   const [stockDlg, setStockDlg] = useState<Med | null>(null);
-  const [stockForm, setStockForm] = useState({ change_type: "purchase", quantity_change: "", cost_price_usd: "", notes: "" });
+  const [stockForm, setStockForm] = useState({ change_type: "purchase", quantity_change: "", unit: "Pcs", cost_price_usd: "", notes: "" });
   const [optDlg, setOptDlg] = useState(false);
   const [scanInput, setScanInput] = useState("");
   const [uploading, setUploading] = useState(false);
