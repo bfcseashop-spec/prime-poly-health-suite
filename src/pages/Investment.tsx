@@ -97,8 +97,46 @@ export default function Investment() {
   const [catForm, setCatForm] = useState<{ id: string; name: string; color: string }>({ id: "", name: "", color: COLOR_PRESETS[0].value });
   const [deleteCatId, setDeleteCatId] = useState<string | null>(null);
   const [investorMgrOpen, setInvestorMgrOpen] = useState(false);
-  const [quickInv, setQuickInv] = useState({ full_name: "", email: "", phone: "", notes: "" });
+  const [quickInv, setQuickInv] = useState({ full_name: "", email: "", phone: "", notes: "", photo_url: "" });
   const [quickInvSaving, setQuickInvSaving] = useState(false);
+  const [quickPhotoUploading, setQuickPhotoUploading] = useState(false);
+  const quickPhotoRef = useRef<HTMLInputElement>(null);
+  const investorPhotoRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const uploadInvestorPhoto = async (file: File): Promise<string | null> => {
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("investor-photos").upload(path, file, { upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from("investor-photos").getPublicUrl(path);
+      return data.publicUrl;
+    } catch (e: any) {
+      toast.error(e.message);
+      return null;
+    }
+  };
+
+  const handleQuickPhoto = async (file: File) => {
+    setQuickPhotoUploading(true);
+    const url = await uploadInvestorPhoto(file);
+    setQuickPhotoUploading(false);
+    if (url) {
+      setQuickInv(p => ({ ...p, photo_url: url }));
+      toast.success("Photo uploaded");
+    }
+  };
+
+  const handleInvestorPhotoChange = async (investorId: string, file: File) => {
+    const url = await uploadInvestorPhoto(file);
+    if (!url) return;
+    const { error } = await (supabase.from("shareholders" as any) as any)
+      .update({ photo_url: url }).eq("id", investorId);
+    if (error) return toast.error(error.message);
+    toast.success("Photo updated");
+    load();
+  };
+
   const addQuickInvestor = async () => {
     if (!quickInv.full_name.trim()) return toast.error("Name is required");
     setQuickInvSaving(true);
@@ -108,6 +146,7 @@ export default function Investment() {
       email: quickInv.email || null,
       phone: quickInv.phone || null,
       notes: quickInv.notes || null,
+      photo_url: quickInv.photo_url || null,
       share_percent: 0,
       committed_capital_usd: 0,
       active: true,
@@ -116,7 +155,7 @@ export default function Investment() {
     setQuickInvSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Investor added");
-    setQuickInv({ full_name: "", email: "", phone: "", notes: "" });
+    setQuickInv({ full_name: "", email: "", phone: "", notes: "", photo_url: "" });
     load();
   };
 
