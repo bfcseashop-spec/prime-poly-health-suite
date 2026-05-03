@@ -27,22 +27,28 @@ export default function PatientProfile() {
   const [visits, setVisits] = useState<any[]>([]);
   const [rx, setRx] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
+  const [records, setRecords] = useState<any[]>([]);
+  const [labs, setLabs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       setLoading(true);
-      const [pat, vs, rxs, sl] = await Promise.all([
+      const [pat, vs, rxs, sl, mr, lr] = await Promise.all([
         supabase.from("patients").select("*").eq("id", id).maybeSingle(),
         supabase.from("opd_visits").select("*").eq("patient_id", id).order("visit_date", { ascending: false }),
         supabase.from("prescriptions").select("*, prescription_items(*)").eq("patient_id", id).order("created_at", { ascending: false }),
         supabase.from("medicine_sales").select("*, medicine_sale_items(*)").eq("patient_id", id).order("created_at", { ascending: false }),
+        supabase.from("medical_records" as any).select("*").eq("patient_id", id).order("record_date", { ascending: false }),
+        supabase.from("lab_reports" as any).select("*").eq("patient_id", id).order("test_date", { ascending: false }),
       ]);
       setP(pat.data);
       setVisits(vs.data ?? []);
       setRx(rxs.data ?? []);
       setSales(sl.data ?? []);
+      setRecords((mr.data as any) ?? []);
+      setLabs((lr.data as any) ?? []);
       setLoading(false);
     })();
   }, [id]);
@@ -103,6 +109,8 @@ export default function PatientProfile() {
           </Card>
         ))}
       </div>
+
+      <SummaryPanel records={records} labs={labs} visits={visits} rx={rx} />
 
       <Tabs defaultValue="records">
         <TabsList className="flex-wrap h-auto">
@@ -212,5 +220,78 @@ function Field({ label, value }: { label: string; value: any }) {
       <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
       <div className="font-medium mt-0.5">{value}</div>
     </div>
+  );
+}
+
+function SummaryPanel({ records, labs, visits, rx }: { records: any[]; labs: any[]; visits: any[]; rx: any[] }) {
+  const latest = records[0];
+  const latestVisit = visits[0];
+  const latestRx = rx[0];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const upcoming = records
+    .filter(r => r.follow_up_date && new Date(r.follow_up_date) >= today)
+    .sort((a, b) => new Date(a.follow_up_date).getTime() - new Date(b.follow_up_date).getTime())[0];
+  const pendingLabs = labs.filter(l => l.status === "pending" || l.status === "in_progress").length;
+
+  const daysUntil = upcoming
+    ? Math.ceil((new Date(upcoming.follow_up_date).getTime() - today.getTime()) / 86400000)
+    : null;
+
+  if (!latest && !latestVisit && !upcoming && !latestRx) return null;
+
+  return (
+    <Card className="p-5 shadow-soft border-l-4 border-l-primary">
+      <div className="flex items-center gap-2 mb-4">
+        <Activity className="h-4 w-4 text-primary" />
+        <h2 className="font-semibold">Patient Summary</h2>
+        <span className="text-xs text-muted-foreground">Quick overview</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-lg border bg-card/50 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm font-medium"><Stethoscope className="h-4 w-4 text-primary" />Latest Consultation</div>
+            {latest && <span className="text-xs text-muted-foreground">{new Date(latest.record_date).toLocaleDateString()}</span>}
+          </div>
+          {latest ? (
+            <div className="space-y-1.5 text-sm">
+              {latest.doctor_name && <div className="text-muted-foreground">Dr. {latest.doctor_name}</div>}
+              {latest.diagnosis && <div><span className="text-xs uppercase tracking-wide text-muted-foreground">Diagnosis: </span><span className="font-medium">{latest.diagnosis}</span></div>}
+              {latest.chief_complaint && <div className="text-muted-foreground line-clamp-2">{latest.chief_complaint}</div>}
+            </div>
+          ) : latestVisit ? (
+            <div className="text-sm text-muted-foreground">
+              Last OPD visit: {new Date(latestVisit.visit_date).toLocaleDateString()}
+              {latestVisit.chief_complaint && <div className="line-clamp-2 mt-1">{latestVisit.chief_complaint}</div>}
+            </div>
+          ) : <div className="text-sm text-muted-foreground">No consultation recorded</div>}
+        </div>
+
+        <div className="rounded-lg border bg-card/50 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm font-medium"><Calendar className="h-4 w-4 text-warning" />Upcoming Follow-up</div>
+            {upcoming && (
+              <Badge className={daysUntil! <= 3 ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}>
+                {daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`}
+              </Badge>
+            )}
+          </div>
+          {upcoming ? (
+            <div className="space-y-1.5 text-sm">
+              <div className="font-semibold">{new Date(upcoming.follow_up_date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</div>
+              {upcoming.diagnosis && <div className="text-muted-foreground">For: {upcoming.diagnosis}</div>}
+              {upcoming.doctor_name && <div className="text-xs text-muted-foreground">With Dr. {upcoming.doctor_name}</div>}
+            </div>
+          ) : <div className="text-sm text-muted-foreground">No follow-up scheduled</div>}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2 text-xs">
+        <Badge variant="outline">{records.length} records</Badge>
+        <Badge variant="outline">{visits.length} visits</Badge>
+        <Badge variant="outline">{rx.length} prescriptions</Badge>
+        <Badge variant="outline">{labs.length} lab reports</Badge>
+        {pendingLabs > 0 && <Badge className="bg-warning/10 text-warning">{pendingLabs} lab pending</Badge>}
+      </div>
+    </Card>
   );
 }
