@@ -76,8 +76,9 @@ export default function Patients() {
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => {
+  const openNew = async () => {
     setEditing(null); setForm(empty); setPhotoFile(null); setPhotoPreview(""); setOpen(true);
+    await previewNextCode();
   };
   const openEdit = (p: Patient) => {
     setEditing(p);
