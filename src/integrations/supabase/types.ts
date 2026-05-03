@@ -1451,6 +1451,69 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_members: {
+        Row: {
+          address: string | null
+          age: number | null
+          created_at: string
+          created_by: string | null
+          department: string | null
+          email: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          joining_date: string | null
+          monthly_salary_usd: number
+          notes: string | null
+          phone: string | null
+          photo_url: string | null
+          position: string
+          qualification: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          age?: number | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          joining_date?: string | null
+          monthly_salary_usd?: number
+          notes?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          position: string
+          qualification?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          age?: number | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          joining_date?: string | null
+          monthly_salary_usd?: number
+          notes?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          position?: string
+          qualification?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       staff_salaries: {
         Row: {
           amount_usd: number

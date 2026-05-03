@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet, ShieldCheck, CreditCard, History, Layers, PillBottle, BedDouble } from "lucide-react";
+import { LayoutDashboard, Users, Stethoscope, FileText, Pill, FlaskConical, ScanLine, Activity, Receipt, BarChart3, Settings, Wallet, ShieldCheck, CreditCard, History, Layers, PillBottle, BedDouble, UserCog } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, SidebarHeader } from "@/components/ui/sidebar";
 import { ClinicLogo } from "./ClinicLogo";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
@@ -25,6 +25,7 @@ const future: Item[] = [
   { title: "Expenses", url: "/expenses", icon: Wallet, roles: ["admin","accountant"] },
   { title: "Insurance", url: "/insurance", icon: ShieldCheck, roles: ["admin","accountant","receptionist"] },
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["admin","accountant"] },
+  { title: "Staff", url: "/staff", icon: UserCog, roles: ["admin"] },
 ];
 
 export function AppSidebar() {

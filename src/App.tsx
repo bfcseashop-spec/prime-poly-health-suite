@@ -26,6 +26,7 @@ import OperationTheater from "./pages/OperationTheater";
 import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
 import IPD from "./pages/IPD";
+import Staff from "./pages/Staff";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="/expenses" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><Expenses /></AppLayout></ProtectedRoute>} />
               <Route path="/insurance" element={<ProtectedRoute roles={["admin","accountant","receptionist"]}><AppLayout><Insurance /></AppLayout></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><Reports /></AppLayout></ProtectedRoute>} />
+              <Route path="/staff" element={<ProtectedRoute roles={["admin"]}><AppLayout><Staff /></AppLayout></ProtectedRoute>} />
               <Route path="/settings" element={<Shell><SettingsPage /></Shell>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
