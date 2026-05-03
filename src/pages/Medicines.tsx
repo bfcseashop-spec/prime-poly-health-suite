@@ -9,12 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Pill, Pencil, Trash2, PackagePlus, History, TrendingUp, AlertTriangle, Boxes, Upload, Download, ScanBarcode, Settings2, ImagePlus, X, Camera } from "lucide-react";
+import { Plus, Search, Pill, Pencil, Trash2, PackagePlus, History, TrendingUp, AlertTriangle, Boxes, Upload, Download, ScanBarcode, Settings2, ImagePlus, X, Camera, Eye, Printer } from "lucide-react";
 import { CameraScanner } from "@/components/CameraScanner";
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
-import { exportToCSV, exportToExcel, parseImportFile, downloadTemplate } from "@/lib/dataIO";
+import { exportToCSV, exportToExcel, parseImportFile, downloadTemplate, printBarcodes } from "@/lib/dataIO";
 
 type Med = any;
 
