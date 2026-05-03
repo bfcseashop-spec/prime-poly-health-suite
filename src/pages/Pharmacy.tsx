@@ -106,7 +106,6 @@ export default function Pharmacy() {
     printReceipt({ invoice, items: cart, subtotal, discount: totalDiscount, total, payment, patient: patients.find(p => p.id === patientId) });
     setCart([]); setDiscount(0); setPatientId(undefined); setInsuranceCard(null); load();
   };
-  };
 
   const printReceipt = (r: any) => {
     const w = window.open("", "_blank", "width=400,height=700");
