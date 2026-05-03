@@ -213,17 +213,39 @@ export default function Pharmacy() {
                       <SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.patient_code} — {p.full_name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1"><Label className="text-xs">Discount (USD)</Label><Input type="number" step="0.01" value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className="h-8" /></div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Insurance Card</Label>
+                    {insuranceCard ? (
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-success/10 border border-success/30 text-xs">
+                        <div className="min-w-0">
+                          <p className="font-mono font-semibold truncate">{insuranceCard.card_no}</p>
+                          <p className="text-muted-foreground capitalize">{insuranceCard.tier} • {Number(insuranceCard.discount_percent)}% off</p>
+                        </div>
+                        <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setInsuranceCard(null)}><X className="h-3 w-3" /></Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1">
+                        <Input value={cardInput} onChange={e => setCardInput(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && (e.preventDefault(), lookupCard())}
+                          placeholder="Scan card no…" className="h-8 font-mono uppercase" />
+                        <Button type="button" size="sm" variant="outline" onClick={lookupCard} className="h-8 px-2"><ScanBarcode className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1"><Label className="text-xs">Manual Discount (USD)</Label><Input type="number" step="0.01" value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className="h-8" /></div>
                   <div className="space-y-1"><Label className="text-xs">Payment</Label>
                     <Select value={payment} onValueChange={setPayment}>
                       <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                      <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                      <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</Select>
                     </Select>
                   </div>
                 </div>
                 <div className="space-y-1 pt-3 border-t">
                   <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmtUSD(subtotal)}</span></div>
-                  <div className="flex justify-between text-sm text-muted-foreground"><span>Discount</span><span>−{fmtUSD(discount)}</span></div>
+                  {insuranceDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-success"><span>Insurance ({Number(insuranceCard?.discount_percent)}%)</span><span>−{fmtUSD(insuranceDiscount)}</span></div>
+                  )}
+                  <div className="flex justify-between text-sm text-muted-foreground"><span>Manual discount</span><span>−{fmtUSD(discount)}</span></div>
                   <div className="flex justify-between text-base font-bold text-primary pt-1 border-t"><span>TOTAL</span><span>{fmtUSD(total)}</span></div>
                   <p className="text-right text-xs text-muted-foreground">{fmtBoth(total).split(" • ")[1]}</p>
                 </div>
