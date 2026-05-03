@@ -910,32 +910,27 @@ export default function Investment() {
 
           {/* Body */}
           <div className="px-6 py-5 space-y-4 bg-background">
-            {/* Investment selector */}
+            {/* Investment selector — pulls from investments table */}
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">
                 Investment <span className="text-destructive">*</span>
               </Label>
               <Select
-                value={shForm.notes?.startsWith("Investment:") ? shForm.notes.replace(/^Investment:\s*/, "") : "Capital Amount Investment"}
+                value={shForm.notes?.startsWith("Investment:") ? shForm.notes.replace(/^Investment:\s*/, "") : (investments[0]?.name || "")}
                 onValueChange={v => setShForm({ ...shForm, notes: `Investment: ${v}` })}
               >
                 <SelectTrigger className="h-11 bg-background border-2 focus:border-primary">
-                  <SelectValue />
+                  <SelectValue placeholder={investments.length === 0 ? "No investments — add one first" : "Select investment"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from(new Set([
-                    "Capital Amount Investment",
-                    ...contributions.map((c: any) => c.investment_name).filter(Boolean),
-                  ])).map(inv => {
-                    const total = contributions
-                      .filter((c: any) => (c.investment_name || "Capital Amount Investment") === inv)
-                      .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
-                    return (
-                      <SelectItem key={inv} value={inv}>
-                        {inv} ({fmtUSD(total)})
-                      </SelectItem>
-                    );
-                  })}
+                  {investments.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No investments yet</div>
+                  )}
+                  {investments.map((inv: any) => (
+                    <SelectItem key={inv.id} value={inv.name}>
+                      {inv.name} — {fmtUSD(Number(inv.total_amount_usd || 0))}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
