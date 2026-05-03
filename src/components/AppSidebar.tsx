@@ -18,6 +18,7 @@ const main: Item[] = [
 const future: Item[] = [
   { title: "Laboratory", url: "/lab", icon: FlaskConical, roles: ["admin","lab_tech"] },
   { title: "X-Ray", url: "/xray", icon: ScanLine, roles: ["admin","lab_tech"] },
+  { title: "Services & Packages", url: "/services", icon: Layers, roles: ["admin","accountant","receptionist","pharmacist","nurse"] },
   { title: "Operation Theater", url: "/ot", icon: Activity, roles: ["admin","doctor","nurse"] },
   { title: "Expenses", url: "/expenses", icon: Wallet, roles: ["admin","accountant"] },
   { title: "Insurance", url: "/insurance", icon: ShieldCheck, roles: ["admin","accountant","receptionist"] },
