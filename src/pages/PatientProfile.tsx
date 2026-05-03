@@ -27,22 +27,28 @@ export default function PatientProfile() {
   const [visits, setVisits] = useState<any[]>([]);
   const [rx, setRx] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
+  const [records, setRecords] = useState<any[]>([]);
+  const [labs, setLabs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       setLoading(true);
-      const [pat, vs, rxs, sl] = await Promise.all([
+      const [pat, vs, rxs, sl, mr, lr] = await Promise.all([
         supabase.from("patients").select("*").eq("id", id).maybeSingle(),
         supabase.from("opd_visits").select("*").eq("patient_id", id).order("visit_date", { ascending: false }),
         supabase.from("prescriptions").select("*, prescription_items(*)").eq("patient_id", id).order("created_at", { ascending: false }),
         supabase.from("medicine_sales").select("*, medicine_sale_items(*)").eq("patient_id", id).order("created_at", { ascending: false }),
+        supabase.from("medical_records" as any).select("*").eq("patient_id", id).order("record_date", { ascending: false }),
+        supabase.from("lab_reports" as any).select("*").eq("patient_id", id).order("test_date", { ascending: false }),
       ]);
       setP(pat.data);
       setVisits(vs.data ?? []);
       setRx(rxs.data ?? []);
       setSales(sl.data ?? []);
+      setRecords((mr.data as any) ?? []);
+      setLabs((lr.data as any) ?? []);
       setLoading(false);
     })();
   }, [id]);
