@@ -816,6 +816,146 @@ export default function Investment() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* CATEGORY MANAGER */}
+      <Dialog open={catMgrOpen} onOpenChange={(o) => { setCatMgrOpen(o); if (!o) openNewCat(); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Tag className="h-5 w-5 text-primary" />Manage Categories</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 md:grid-cols-2 py-2">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">{catForm.id ? "Edit Category" : "Add New Category"}</p>
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })} placeholder="e.g. Utility Bill" />
+              </div>
+              <div className="space-y-2">
+                <Label>Color</Label>
+                <div className="grid grid-cols-6 gap-2">
+                  {COLOR_PRESETS.map(p => (
+                    <button key={p.value} type="button" onClick={() => setCatForm({ ...catForm, color: p.value })}
+                      className={cn("h-9 rounded-md border-2 flex items-center justify-center transition-all",
+                        catForm.color === p.value ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50")}
+                      title={p.label}>
+                      <span className={cn("h-4 w-4 rounded-full", p.dot)} />
+                    </button>
+                  ))}
+                </div>
+                {catForm.name && (
+                  <div className="pt-2"><Badge variant="outline" className={cn("text-xs", catForm.color)}>{catForm.name}</Badge></div>
+                )}
+              </div>
+              <div className="flex gap-2 pt-2">
+                {catForm.id && <Button variant="outline" size="sm" onClick={openNewCat}>Cancel</Button>}
+                <Button size="sm" onClick={saveCat} className="clinic-gradient text-primary-foreground flex-1">
+                  {catForm.id ? "Save" : "Add Category"}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Existing ({categories.length})</p>
+              <div className="border rounded-lg max-h-[340px] overflow-y-auto divide-y">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No categories yet</p>
+                ) : categories.map(c => (
+                  <div key={c.id} className="flex items-center justify-between p-2.5 hover:bg-muted/40">
+                    <Badge variant="outline" className={cn("text-xs", c.color)}>{c.name}</Badge>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditCat(c)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteCatId(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* INVESTOR MANAGER */}
+      <Dialog open={investorMgrOpen} onOpenChange={setInvestorMgrOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Manage Investors</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => { setInvestorMgrOpen(false); openNewSh(); }} className="clinic-gradient text-primary-foreground">
+                <Plus className="h-4 w-4 mr-1" />Add Investor
+              </Button>
+            </div>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Investor</TableHead>
+                    <TableHead>Share %</TableHead>
+                    <TableHead className="text-right">Capital</TableHead>
+                    <TableHead className="text-right">Paid</TableHead>
+                    <TableHead className="text-right">Due</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {shareholders.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No investors</TableCell></TableRow>
+                  ) : shareholders.map((s, idx) => {
+                    const committed = Number(s.committed_capital_usd || 0);
+                    const paid = paidByShareholder[s.id] || 0;
+                    const due = Math.max(0, committed - paid);
+                    return (
+                      <TableRow key={s.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={s.photo_url || undefined} />
+                              <AvatarFallback className="text-primary-foreground text-xs" style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}>
+                                {s.full_name?.[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium">{s.full_name}</p>
+                              <p className="text-[11px] text-muted-foreground">{s.phone || s.email || "—"}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell><Badge variant="outline">{Number(s.share_percent || 0)}%</Badge></TableCell>
+                        <TableCell className="text-right font-semibold">{fmtUSD(committed)}</TableCell>
+                        <TableCell className="text-right text-success font-semibold">{fmtUSD(paid)}</TableCell>
+                        <TableCell className="text-right text-warning font-semibold">{fmtUSD(due)}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setInvestorMgrOpen(false); openEditSh(s); }}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteShId(s.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteCatId} onOpenChange={(o) => !o && setDeleteCatId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this category?</AlertDialogTitle>
+            <AlertDialogDescription>Existing contributions using this category will keep the name but lose its styling.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
