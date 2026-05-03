@@ -636,7 +636,25 @@ export default function Medicines() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5"><Label>Quantity</Label><Input type="number" value={stockForm.quantity_change} onChange={e => setStockForm({ ...stockForm, quantity_change: e.target.value })} autoFocus /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Quantity</Label><Input type="number" value={stockForm.quantity_change} onChange={e => setStockForm({ ...stockForm, quantity_change: e.target.value })} autoFocus /></div>
+              <div className="space-y-1.5"><Label>Unit</Label>
+                <Select value={stockForm.unit} onValueChange={v => setStockForm({ ...stockForm, unit: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pcs">Pcs (single)</SelectItem>
+                    {stockDlg?.units_per_strip ? <SelectItem value="Strip">Strip ({stockDlg.units_per_strip} pcs)</SelectItem> : null}
+                    {stockDlg?.units_per_packet ? <SelectItem value="Packet">Packet ({stockDlg.units_per_packet} pcs)</SelectItem> : null}
+                    {stockDlg?.units_per_box ? <SelectItem value="Box">Box ({stockDlg.units_per_box} pcs)</SelectItem> : null}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {stockDlg && stockForm.quantity_change && stockForm.unit !== "Pcs" && (
+              <div className="rounded-md bg-primary/10 border border-primary/30 p-2 text-sm">
+                ✨ {stockForm.quantity_change} {stockForm.unit} × {unitMultiplier(stockDlg, stockForm.unit)} = <span className="font-bold text-primary">{Number(stockForm.quantity_change) * unitMultiplier(stockDlg, stockForm.unit)} pcs</span>
+              </div>
+            )}
             <div className="space-y-1.5"><Label>Cost Price / Unit (optional)</Label><Input type="number" step="0.01" value={stockForm.cost_price_usd} onChange={e => setStockForm({ ...stockForm, cost_price_usd: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Notes</Label><Input value={stockForm.notes} onChange={e => setStockForm({ ...stockForm, notes: e.target.value })} placeholder="Invoice no, reason..." /></div>
           </div>
