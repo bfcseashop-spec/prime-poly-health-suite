@@ -55,7 +55,7 @@ const App = () => (
               <Route path="/xray" element={<ProtectedRoute roles={["admin","doctor","nurse","lab_tech","receptionist"]}><AppLayout><XRay /></AppLayout></ProtectedRoute>} />
               <Route path="/services" element={<ProtectedRoute roles={["admin","accountant","receptionist","pharmacist","nurse"]}><AppLayout><Services /></AppLayout></ProtectedRoute>} />
               <Route path="/medicines" element={<ProtectedRoute roles={["admin","pharmacist"]}><AppLayout><Medicines /></AppLayout></ProtectedRoute>} />
-              <Route path="/ot" element={<Shell><ComingSoon title="Operation Theater" /></Shell>} />
+              <Route path="/ot" element={<ProtectedRoute roles={["admin","doctor","nurse","receptionist"]}><AppLayout><OperationTheater /></AppLayout></ProtectedRoute>} />
               <Route path="/billing" element={<Shell><ComingSoon title="Billing & Invoices" /></Shell>} />
               <Route path="/expenses" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><Expenses /></AppLayout></ProtectedRoute>} />
               <Route path="/insurance" element={<ProtectedRoute roles={["admin","accountant","receptionist"]}><AppLayout><Insurance /></AppLayout></ProtectedRoute>} />
