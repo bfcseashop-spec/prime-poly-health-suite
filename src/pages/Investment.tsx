@@ -1003,119 +1003,8 @@ export default function Investment() {
             </DialogHeader>
           </div>
 
-          {/* Body */}
+          {/* Body — simplified: only Investment Name + Amount */}
           <div className="px-6 py-5 space-y-5 bg-background overflow-y-auto">
-            {/* Investor Allocation Block */}
-            {!cForm.id && (
-              <div className="rounded-xl border-2 border-dashed bg-muted/20 p-4 space-y-3">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-semibold">
-                    Investor Name <span className="text-destructive">*</span>
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Select investors and adjust share %. Amounts calculated from total below.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {(cForm.allocations || []).map((a, idx) => {
-                    const used = (cForm.allocations || []).map(x => x.shareholder_id);
-                    const available = shareholders.filter(s => s.id === a.shareholder_id || !used.includes(s.id));
-                    const amt = Number(cForm.amount_usd) || 0;
-                    const totalPct = (cForm.allocations || []).reduce((s, x) => s + Number(x.share_percent || 0), 0) || 1;
-                    const portion = amt > 0 ? (amt * Number(a.share_percent || 0)) / totalPct : 0;
-                    return (
-                      <div key={idx} className="flex items-center gap-2 bg-background rounded-lg border p-2">
-                        <Select
-                          value={a.shareholder_id}
-                          onValueChange={v => {
-                            const next = [...cForm.allocations];
-                            next[idx] = { ...next[idx], shareholder_id: v };
-                            setCForm({ ...cForm, allocations: next });
-                          }}
-                        >
-                          <SelectTrigger className="flex-1 h-10 border-2 focus:border-primary">
-                            <SelectValue placeholder="Select investor" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {available.map(s => (
-                              <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <div className="relative w-24">
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step="0.01"
-                            placeholder="0"
-                            className="h-10 pr-7 text-right border-2"
-                            value={a.share_percent}
-                            onChange={e => {
-                              const next = [...cForm.allocations];
-                              next[idx] = { ...next[idx], share_percent: e.target.value };
-                              setCForm({ ...cForm, allocations: next });
-                            }}
-                          />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                        </div>
-                        <div className="w-24 text-right text-xs font-medium text-muted-foreground tabular-nums">
-                          {fmtUSD(portion)}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
-                          onClick={() => {
-                            const next = cForm.allocations.filter((_, i) => i !== idx);
-                            setCForm({ ...cForm, allocations: next });
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 border-dashed"
-                    onClick={() => {
-                      const used = new Set((cForm.allocations || []).map(x => x.shareholder_id));
-                      const next = shareholders.find(s => !used.has(s.id));
-                      const remaining = Math.max(
-                        0,
-                        100 - (cForm.allocations || []).reduce((s, x) => s + Number(x.share_percent || 0), 0)
-                      );
-                      setCForm({
-                        ...cForm,
-                        allocations: [
-                          ...(cForm.allocations || []),
-                          { shareholder_id: next?.id ?? "", share_percent: remaining || 100 },
-                        ],
-                      });
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Add investor
-                  </Button>
-                </div>
-                {(cForm.allocations || []).length > 0 && (() => {
-                  const totalPct = cForm.allocations.reduce((s, x) => s + Number(x.share_percent || 0), 0);
-                  const ok = Math.abs(totalPct - 100) < 0.01;
-                  return (
-                    <div className={cn(
-                      "text-xs flex items-center justify-between px-1",
-                      ok ? "text-success" : "text-warning"
-                    )}>
-                      <span>Total share allocated</span>
-                      <span className="font-semibold tabular-nums">{totalPct.toFixed(2)}%</span>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
             {cForm.id && (
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Investor</Label>
@@ -1128,124 +1017,45 @@ export default function Investment() {
               </div>
             )}
 
-            {/* Amount + Expected Return */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  Amount ($) <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="number" min={0} step="0.01"
-                  className="h-11 border-2 focus-visible:border-primary"
-                  value={cForm.amount_usd}
-                  onChange={e => setCForm({ ...cForm, amount_usd: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Expected Return ($)</Label>
-                <Input
-                  type="number" min={0} step="0.01"
-                  className="h-11 border-2 focus-visible:border-primary"
-                  value={cForm.expected_return_usd}
-                  onChange={e => setCForm({ ...cForm, expected_return_usd: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Pay by */}
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Pay by</Label>
-              <Select value={cForm.payment_method} onValueChange={v => setCForm({ ...cForm, payment_method: v })}>
-                <SelectTrigger className="h-11 border-2"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Title */}
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">
-                Title <span className="text-destructive">*</span>
+                Investment Name <span className="text-destructive">*</span>
               </Label>
               <Input
                 className="h-11 border-2 focus-visible:border-primary"
                 value={cForm.investment_name}
                 onChange={e => setCForm({ ...cForm, investment_name: e.target.value })}
                 placeholder="e.g. Capital Amount Investment"
+                autoFocus
               />
             </div>
 
-            {/* Category */}
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">
-                Category <span className="text-destructive">*</span>
+                Amount ($) <span className="text-destructive">*</span>
               </Label>
-              <Select value={cForm.category} onValueChange={v => setCForm({ ...cForm, category: v })}>
-                <SelectTrigger className="h-11 border-2"><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date + Return Date */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  Date <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="date"
-                  className="h-11 border-2 focus-visible:border-primary"
-                  value={cForm.paid_on}
-                  onChange={e => setCForm({ ...cForm, paid_on: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Return Date</Label>
-                <Input
-                  type="date"
-                  className="h-11 border-2 focus-visible:border-primary"
-                  value={cForm.return_date}
-                  onChange={e => setCForm({ ...cForm, return_date: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Notes</Label>
-              <Textarea
-                rows={3}
-                className="border-2 focus-visible:border-primary resize-none"
-                value={cForm.notes}
-                onChange={e => setCForm({ ...cForm, notes: e.target.value })}
+              <Input
+                type="number" min={0} step="0.01"
+                className="h-11 border-2 focus-visible:border-primary"
+                value={cForm.amount_usd}
+                onChange={e => setCForm({ ...cForm, amount_usd: e.target.value })}
+                placeholder="0.00"
               />
             </div>
 
-            {/* Slip */}
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Slip / Receipt</Label>
-              <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden onChange={e => e.target.files?.[0] && handleSlipUpload(e.target.files[0])} />
-              {cForm.slip_url ? (
-                <div className="flex items-center gap-2 p-2.5 border-2 rounded-lg bg-muted/30">
-                  <ImageIcon className="h-4 w-4 text-primary" />
-                  <a href={cForm.slip_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate flex-1">View uploaded slip</a>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setCForm({ ...cForm, slip_url: "" })}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                  <Upload className="h-3.5 w-3.5 mr-1" />{uploading ? "Uploading..." : "Upload Slip"}
-                </Button>
-              )}
-            </div>
+            {!cForm.id && shareholders.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Will be auto-split across {shareholders.filter((s: any) => s.active !== false).length} investor(s) by their share %.
+              </p>
+            )}
+
+            <Button
+              onClick={submitC}
+              className="w-full h-11 clinic-gradient text-primary-foreground font-semibold text-base shadow-md"
+            >
+              {cForm.id ? "Save Changes" : "Add Investment"}
+            </Button>
+          </div>
 
             <Button
               onClick={submitC}
