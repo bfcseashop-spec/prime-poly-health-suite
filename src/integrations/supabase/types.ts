@@ -785,6 +785,7 @@ export type Database = {
           expiry_date: string | null
           generic_name: string | null
           id: string
+          image_url: string | null
           low_stock_threshold: number
           name: string
           packet_barcode: string | null
@@ -814,6 +815,7 @@ export type Database = {
           expiry_date?: string | null
           generic_name?: string | null
           id?: string
+          image_url?: string | null
           low_stock_threshold?: number
           name: string
           packet_barcode?: string | null
@@ -843,6 +845,7 @@ export type Database = {
           expiry_date?: string | null
           generic_name?: string | null
           id?: string
+          image_url?: string | null
           low_stock_threshold?: number
           name?: string
           packet_barcode?: string | null
