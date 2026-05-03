@@ -431,7 +431,7 @@ export default function Investment() {
     const rows = allocs.map(a => ({
       shareholder_id: a.shareholder_id,
       investment_name: cForm.investment_name.trim(),
-      category: cForm.category,
+      category: categoryValue,
       amount_usd: +((amt * Number(a.share_percent)) / totalPct).toFixed(2),
       paid_on: cForm.paid_on,
       payment_method: cForm.payment_method,
