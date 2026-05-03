@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import {
   BedDouble, UserPlus, LogOut, Users, Activity, Stethoscope, Search,
-  CircleCheck, CircleX, Wrench, Crown, Heart,
+  CircleCheck, CircleX, Wrench, Crown, Heart, ArrowRightLeft,
 } from "lucide-react";
 
 const ROOM_TYPE_META: Record<string, { label: string; color: string; icon: any }> = {
@@ -42,6 +42,8 @@ export default function IPD() {
   const [filter, setFilter] = useState<"all" | "available" | "occupied" | "maintenance">("all");
   const [admitOpen, setAdmitOpen] = useState(false);
   const [dischargeFor, setDischargeFor] = useState<any | null>(null);
+  const [transferFor, setTransferFor] = useState<any | null>(null);
+  const [transferForm, setTransferForm] = useState<{ room_id: string; bed_no: string; doctor_name: string; reason: string }>({ room_id: "", bed_no: "", doctor_name: "", reason: "" });
   const [preselectRoom, setPreselectRoom] = useState<string>("");
 
   const [form, setForm] = useState<any>({
@@ -128,6 +130,33 @@ export default function IPD() {
     if (error) return toast.error(error.message);
     toast.success(`Discharged. Total charges: ${fmtUSD(total)}`);
     setDischargeFor(null);
+    load();
+  };
+
+  const openTransfer = (adm: any) => {
+    setTransferFor(adm);
+    setTransferForm({ room_id: "", bed_no: "", doctor_name: adm.doctor_name || "", reason: "" });
+  };
+
+  const submitTransfer = async () => {
+    if (!transferFor) return;
+    if (!transferForm.room_id) return toast.error("Select a destination room");
+    if (transferForm.room_id === transferFor.room_id) return toast.error("Choose a different room");
+    const newRoom = rooms.find(r => r.id === transferForm.room_id);
+    const prevNote = transferFor.notes ? `${transferFor.notes}\n` : "";
+    const transferLog = `[Transfer ${format(new Date(), "PPp")}] ${transferFor.rooms?.room_no || "—"} → ${newRoom?.room_no}${transferForm.reason ? ` • ${transferForm.reason}` : ""}`;
+    const { error } = await (supabase.from("admissions" as any) as any)
+      .update({
+        room_id: transferForm.room_id,
+        bed_no: transferForm.bed_no || null,
+        doctor_name: transferForm.doctor_name || null,
+        daily_rate_usd: newRoom?.daily_rate_usd ?? transferFor.daily_rate_usd,
+        notes: prevNote + transferLog,
+      })
+      .eq("id", transferFor.id);
+    if (error) return toast.error(error.message);
+    toast.success("Patient transferred");
+    setTransferFor(null);
     load();
   };
 
@@ -250,9 +279,14 @@ export default function IPD() {
                         </Button>
                       )}
                       {room.status === "occupied" && adm && (
-                        <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => setDischargeFor(adm)}>
-                          <LogOut className="h-3 w-3 mr-1" />Discharge
-                        </Button>
+                        <>
+                          <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => openTransfer(adm)} title="Transfer">
+                            <ArrowRightLeft className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => setDischargeFor(adm)}>
+                            <LogOut className="h-3 w-3 mr-1" />Discharge
+                          </Button>
+                        </>
                       )}
                       <Select value={room.status} onValueChange={(v) => setRoomStatus(room.id, v)}>
                         <SelectTrigger className="h-7 w-7 px-0 justify-center" />
@@ -317,9 +351,14 @@ export default function IPD() {
                         <TableCell><Badge>{days}d</Badge></TableCell>
                         <TableCell className="text-right font-semibold">{fmtUSD(charges)}</TableCell>
                         <TableCell>
-                          <Button size="sm" variant="outline" onClick={() => setDischargeFor(a)}>
-                            <LogOut className="h-3 w-3 mr-1" />Discharge
-                          </Button>
+                          <div className="flex gap-1.5 justify-end">
+                            <Button size="sm" variant="outline" onClick={() => openTransfer(a)}>
+                              <ArrowRightLeft className="h-3 w-3 mr-1" />Transfer
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setDischargeFor(a)}>
+                              <LogOut className="h-3 w-3 mr-1" />Discharge
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -476,6 +515,61 @@ export default function IPD() {
             <Button variant="outline" onClick={() => setDischargeFor(null)}>Cancel</Button>
             <Button onClick={submitDischarge} className="clinic-gradient text-primary-foreground">
               <LogOut className="h-4 w-4 mr-2" />Confirm Discharge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* TRANSFER DIALOG */}
+      <Dialog open={!!transferFor} onOpenChange={(o) => !o && setTransferFor(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader><DialogTitle>Transfer Patient</DialogTitle></DialogHeader>
+          {transferFor && (
+            <div className="space-y-4 py-2">
+              <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                <p className="font-semibold">{transferFor.patients?.full_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Currently in <span className="font-medium text-foreground">Room {transferFor.rooms?.room_no}</span>
+                  {transferFor.bed_no && <> • Bed {transferFor.bed_no}</>}
+                  {transferFor.doctor_name && <> • Dr. {transferFor.doctor_name}</>}
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>New Room *</Label>
+                  <Select value={transferForm.room_id} onValueChange={v => setTransferForm({ ...transferForm, room_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select destination room" /></SelectTrigger>
+                    <SelectContent>
+                      {rooms.filter(r => r.status === "available" && r.id !== transferFor.room_id).map(r => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.room_no} — {ROOM_TYPE_META[r.room_type]?.label} ({fmtUSD(Number(r.daily_rate_usd))}/day)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>New Bed No</Label>
+                  <Input value={transferForm.bed_no} onChange={e => setTransferForm({ ...transferForm, bed_no: e.target.value })} placeholder="Optional" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Assigned Doctor</Label>
+                  <Input list="doctors-list" value={transferForm.doctor_name} onChange={e => setTransferForm({ ...transferForm, doctor_name: e.target.value })} placeholder="Dr. Name" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Reason for Transfer</Label>
+                  <Textarea value={transferForm.reason} onChange={e => setTransferForm({ ...transferForm, reason: e.target.value })} rows={2} placeholder="e.g. Upgrade to ICU, patient request..." />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Note: Daily rate will switch to the new room's rate from now. Previous room will be marked available.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferFor(null)}>Cancel</Button>
+            <Button onClick={submitTransfer} className="clinic-gradient text-primary-foreground">
+              <ArrowRightLeft className="h-4 w-4 mr-2" />Confirm Transfer
             </Button>
           </DialogFooter>
         </DialogContent>
