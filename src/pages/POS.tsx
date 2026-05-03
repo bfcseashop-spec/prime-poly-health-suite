@@ -443,8 +443,21 @@ export default function POS() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">Manual Discount (USD)</Label>
-                <Input type="number" step="0.01" value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className="h-8" />
+                <Label className="text-xs">Discount</Label>
+                <div className="flex gap-1">
+                  <Select value={discountType} onValueChange={(v: any) => { setDiscountType(v); if (v === "none") setDiscountValue(0); }}>
+                    <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No discount</SelectItem>
+                      <SelectItem value="flat">Flat (USD)</SelectItem>
+                      <SelectItem value="percent">Percentage (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {discountType !== "none" && (
+                    <Input type="number" step="0.01" className="h-8 w-24" placeholder={discountType === "percent" ? "%" : "USD"}
+                      value={discountValue || ""} onChange={e => setDiscountValue(Number(e.target.value) || 0)} />
+                  )}
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -457,28 +470,43 @@ export default function POS() {
             <div className="space-y-1 pt-2 border-t">
               <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmtUSD(subtotal)}</span></div>
               {insuranceDiscount > 0 && <div className="flex justify-between text-sm text-success"><span>Insurance ({Number(insuranceCard?.discount_percent)}%)</span><span>−{fmtUSD(insuranceDiscount)}</span></div>}
-              {discount > 0 && <div className="flex justify-between text-sm text-muted-foreground"><span>Discount</span><span>−{fmtUSD(discount)}</span></div>}
+              {discount > 0 && <div className="flex justify-between text-sm text-success"><span>Discount{discountType === "percent" ? ` (${discountValue}%)` : ""}</span><span>−{fmtUSD(discount)}</span></div>}
               <div className="flex justify-between text-base font-bold text-primary pt-1 border-t"><span>TOTAL</span><span>{fmtUSD(total)}</span></div>
               <p className="text-right text-[10px] text-muted-foreground">{fmtBoth(total).split(" • ")[1]}</p>
             </div>
 
-            {/* SPLIT PAYMENTS */}
+            {/* PAYMENT */}
             <div className="space-y-2 pt-2 border-t">
               <div className="flex items-center justify-between">
-                <Label className="text-xs flex items-center gap-1"><Wallet className="h-3 w-3" />Split Payment</Label>
-                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={addSplit}><Plus className="h-3 w-3 mr-1" />Add</Button>
+                <Label className="text-xs flex items-center gap-1"><Wallet className="h-3 w-3" />Payment</Label>
+                <button type="button" onClick={() => setSplitMode(m => !m)}
+                  className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${splitMode ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border"}`}>
+                  {splitMode ? "Split: ON" : "Split Bill"}
+                </button>
               </div>
-              {splits.map(s => (
-                <div key={s.id} className="flex gap-1 items-center">
-                  <Select value={s.method} onValueChange={v => updSplit(s.id, { method: v })}>
-                    <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Input type="number" step="0.01" className="h-8 w-24" placeholder="0.00" value={s.amount || ""} onChange={e => updSplit(s.id, { amount: Number(e.target.value) || 0 })} />
-                  <Button size="icon" variant="ghost" className="h-7 w-7" title="Fill remaining" onClick={() => fillRemaining(s.id)}><span className="text-xs">=</span></Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => rmSplit(s.id)}><X className="h-3 w-3" /></Button>
-                </div>
-              ))}
+
+              {!splitMode ? (
+                <Select value={autoMethod} onValueChange={setAutoMethod}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                </Select>
+              ) : (
+                <>
+                  {splits.map(s => (
+                    <div key={s.id} className="flex gap-1 items-center">
+                      <Select value={s.method} onValueChange={v => updSplit(s.id, { method: v })}>
+                        <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>{PAYMENTS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Input type="number" step="0.01" className="h-8 w-24" placeholder="0.00" value={s.amount || ""} onChange={e => updSplit(s.id, { amount: Number(e.target.value) || 0 })} />
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Fill remaining" onClick={() => fillRemaining(s.id)}><span className="text-xs">=</span></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => rmSplit(s.id)}><X className="h-3 w-3" /></Button>
+                    </div>
+                  ))}
+                  <Button size="sm" variant="ghost" className="h-7 text-xs w-full" onClick={addSplit}><Plus className="h-3 w-3 mr-1" />Add payment row</Button>
+                </>
+              )}
+
               <div className="flex justify-between text-xs pt-1">
                 <span className="text-muted-foreground">Paid</span>
                 <span className="font-medium">{fmtUSD(totalPaid)}</span>
