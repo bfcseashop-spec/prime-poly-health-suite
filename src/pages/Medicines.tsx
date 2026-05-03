@@ -464,8 +464,10 @@ export default function Medicines() {
                       <TableCell className="text-xs">{m.expiry_date ? <span className={expired ? "text-destructive font-medium" : ""}>{m.expiry_date}</span> : "—"}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openStock(m)} title="Update stock"><PackagePlus className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setViewRow(m)} title="View"><Eye className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(m)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openStock(m)} title="Add Stock"><PackagePlus className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => printBarcodes([{ code: m.barcode || m.strip_barcode || m.packet_barcode || m.box_barcode || m.id, name: m.name, price: Number(m.price_usd ?? 0) }], m.name)} title="Print Barcode" disabled={!(m.barcode || m.strip_barcode || m.packet_barcode || m.box_barcode)}><Printer className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => del(m)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
