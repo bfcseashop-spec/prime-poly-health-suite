@@ -95,7 +95,7 @@ export default function Staff() {
 
   const stats = useMemo(() => ({
     total: rows.length,
-    doctors: rows.filter(r => r.position === "doctor").length,
+    nurses: rows.filter(r => r.position === "nurse").length,
     labTechs: rows.filter(r => r.position === "lab_technician").length,
     payroll: rows.filter(r => r.status === "active").reduce((s, r) => s + Number(r.monthly_salary_usd || 0), 0),
   }), [rows]);
