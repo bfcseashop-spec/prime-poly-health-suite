@@ -355,6 +355,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
     if (methodKey === "due") {
       sales.filter(s => Number(s.due_usd || 0) > 0).forEach(s => list.push({
         id: s.id,
+        sale_id: s.id,
         bill_no: s.invoice_no || s.id.slice(0, 8),
         patient: s.patient_id ? (patientMap[s.patient_id] || "—") : "Walk-in",
         amount: Number(s.due_usd || 0),
@@ -370,6 +371,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
         const s = saleMap[p.sale_id];
         list.push({
           id: p.id,
+          sale_id: p.sale_id,
           bill_no: s?.invoice_no || p.sale_id.slice(0, 8),
           patient: s?.patient_id ? (patientMap[s.patient_id] || "—") : "Walk-in",
           amount: Number(p.amount_usd || 0),
@@ -382,6 +384,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
         const sign = (m.txn_type === "withdrawal" || m.txn_type === "fee") ? -1 : 1;
         list.push({
           id: m.id,
+          sale_id: null,
           bill_no: m.reference_no || `MAN-${m.id.slice(0, 6)}`,
           patient: m.description || `Manual ${m.txn_type}`,
           amount: sign * Number(m.amount_usd || 0),
