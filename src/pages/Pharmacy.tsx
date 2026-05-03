@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Trash2, Receipt, Pill } from "lucide-react";
+import { Plus, Search, Trash2, Receipt, Pill, ScanBarcode, X } from "lucide-react";
 import { toast } from "sonner";
 import { fmtUSD, fmtBoth } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +32,8 @@ export default function Pharmacy() {
   const [patientId, setPatientId] = useState<string | undefined>();
   const [tab, setTab] = useState("pos");
   const [addOpen, setAddOpen] = useState(false);
+  const [insuranceCard, setInsuranceCard] = useState<any | null>(null);
+  const [cardInput, setCardInput] = useState("");
   const [newMed, setNewMed] = useState<any>({ name: "", brand: "", category: "", unit: "tablet", price_usd: 0, stock: 0, low_stock_threshold: 10, expiry_date: "" });
 
   const load = async () => {
@@ -46,7 +48,21 @@ export default function Pharmacy() {
   const filtered = meds.filter(m => !q || m.name.toLowerCase().includes(q.toLowerCase()) || m.brand?.toLowerCase().includes(q.toLowerCase()) || m.barcode === q);
 
   const subtotal = useMemo(() => cart.reduce((s, c) => s + c.price_usd * c.quantity, 0), [cart]);
-  const total = Math.max(0, subtotal - discount);
+  const insuranceDiscount = insuranceCard ? +(subtotal * (Number(insuranceCard.discount_percent) / 100)).toFixed(2) : 0;
+  const total = Math.max(0, subtotal - discount - insuranceDiscount);
+
+  const lookupCard = async () => {
+    const code = cardInput.trim();
+    if (!code) return;
+    const { data, error } = await supabase.from("insurance_cards" as any).select("*").ilike("card_no", code).maybeSingle();
+    if (error || !data) return toast.error("Card not found");
+    const c: any = data;
+    if (c.status !== "active") return toast.error(`Card is ${c.status}`);
+    setInsuranceCard(c);
+    if (c.patient_id) setPatientId(c.patient_id);
+    setCardInput("");
+    toast.success(`${c.tier.toUpperCase()} card • ${Number(c.discount_percent)}% discount applied`);
+  };
 
   const addToCart = (m: any) => {
     if (m.stock <= 0) return toast.error("Out of stock");
