@@ -18,6 +18,7 @@ const future: Item[] = [
   { title: "X-Ray", url: "/xray", icon: ScanLine, roles: ["admin","lab_tech"] },
   { title: "Operation Theater", url: "/ot", icon: Activity, roles: ["admin","doctor","nurse"] },
   { title: "Billing", url: "/billing", icon: Receipt, roles: ["admin","accountant"] },
+  { title: "Expenses", url: "/expenses", icon: Wallet, roles: ["admin","accountant"] },
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["admin","accountant"] },
 ];
 
