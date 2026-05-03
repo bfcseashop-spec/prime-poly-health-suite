@@ -1451,6 +1451,90 @@ export type Database = {
         }
         Relationships: []
       }
+      shareholder_contributions: {
+        Row: {
+          amount_usd: number
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          paid_on: string
+          payment_method: string
+          reference: string | null
+          shareholder_id: string
+        }
+        Insert: {
+          amount_usd?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_on?: string
+          payment_method?: string
+          reference?: string | null
+          shareholder_id: string
+        }
+        Update: {
+          amount_usd?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_on?: string
+          payment_method?: string
+          reference?: string | null
+          shareholder_id?: string
+        }
+        Relationships: []
+      }
+      shareholders: {
+        Row: {
+          active: boolean
+          committed_capital_usd: number
+          created_at: string
+          created_by: string | null
+          email: string | null
+          full_name: string
+          id: string
+          joined_on: string | null
+          notes: string | null
+          phone: string | null
+          photo_url: string | null
+          share_percent: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          committed_capital_usd?: number
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          joined_on?: string | null
+          notes?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          share_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          committed_capital_usd?: number
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          joined_on?: string | null
+          notes?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          share_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       staff_members: {
         Row: {
           address: string | null
