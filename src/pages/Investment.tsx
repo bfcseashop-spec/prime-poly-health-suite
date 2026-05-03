@@ -533,6 +533,13 @@ export default function Investment() {
                   {shareholders.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Category" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {CATEGORIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                </SelectContent>
+              </Select>
               <div className="flex items-center border rounded-md">
                 <Button size="icon" variant={view === "list" ? "secondary" : "ghost"} className="h-9 w-9 rounded-r-none" onClick={() => setView("list")}>
                   <List className="h-4 w-4" />
