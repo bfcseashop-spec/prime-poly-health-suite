@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Phone, MapPin, Cake, ShieldCheck, Stethoscope, Pill, Receipt, Calendar, Activity, ClipboardList, FlaskConical, ScanLine, CreditCard, FileText, Clock, Mail, User, Images } from "lucide-react";
+import { ArrowLeft, Phone, MapPin, Cake, ShieldCheck, Stethoscope, Pill, Receipt, Calendar, Activity, ClipboardList, FlaskConical, ScanLine, CreditCard, FileText, Clock, User, Images, Scissors, Wallet, ExternalLink, Download, ImageIcon } from "lucide-react";
 import { fmtUSD } from "@/lib/currency";
 import MedicalRecordsTab from "@/components/patient/MedicalRecordsTab";
 import LabReportsTab from "@/components/patient/LabReportsTab";
@@ -22,6 +22,18 @@ function age(dob?: string) {
   return Math.floor((Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
 }
 
+const statusTone: Record<string, string> = {
+  pending: "bg-warning/10 text-warning",
+  in_progress: "bg-blue-500/10 text-blue-600",
+  scheduled: "bg-blue-500/10 text-blue-600",
+  completed: "bg-success/10 text-success",
+  reviewed: "bg-primary/10 text-primary",
+  cancelled: "bg-destructive/10 text-destructive",
+  paid: "bg-success/10 text-success",
+  partial: "bg-warning/10 text-warning",
+  unpaid: "bg-destructive/10 text-destructive",
+};
+
 export default function PatientProfile() {
   const { id } = useParams();
   const [p, setP] = useState<any>(null);
@@ -31,13 +43,17 @@ export default function PatientProfile() {
   const [records, setRecords] = useState<any[]>([]);
   const [labs, setLabs] = useState<any[]>([]);
   const [cards, setCards] = useState<any[]>([]);
+  const [labOrders, setLabOrders] = useState<any[]>([]);
+  const [xrayOrders, setXrayOrders] = useState<any[]>([]);
+  const [otBookings, setOtBookings] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       setLoading(true);
-      const [pat, vs, rxs, sl, mr, lr, ic] = await Promise.all([
+      const [pat, vs, rxs, sl, mr, lr, ic, lo, xo, ot] = await Promise.all([
         supabase.from("patients").select("*").eq("id", id).maybeSingle(),
         supabase.from("opd_visits").select("*").eq("patient_id", id).order("visit_date", { ascending: false }),
         supabase.from("prescriptions").select("*, prescription_items(*)").eq("patient_id", id).order("created_at", { ascending: false }),
@@ -45,6 +61,9 @@ export default function PatientProfile() {
         supabase.from("medical_records" as any).select("*").eq("patient_id", id).order("record_date", { ascending: false }),
         supabase.from("lab_reports" as any).select("*").eq("patient_id", id).order("test_date", { ascending: false }),
         supabase.from("insurance_cards" as any).select("*").eq("patient_id", id).order("created_at", { ascending: false }),
+        supabase.from("lab_orders" as any).select("*, lab_order_items(*)").eq("patient_id", id).order("ordered_on", { ascending: false }),
+        supabase.from("xray_orders" as any).select("*, xray_order_items(*)").eq("patient_id", id).order("ordered_on", { ascending: false }),
+        supabase.from("ot_bookings" as any).select("*").eq("patient_id", id).order("scheduled_at", { ascending: false }),
       ]);
       setP(pat.data);
       setVisits(vs.data ?? []);
@@ -53,6 +72,15 @@ export default function PatientProfile() {
       setRecords((mr.data as any) ?? []);
       setLabs((lr.data as any) ?? []);
       setCards((ic.data as any) ?? []);
+      setLabOrders((lo.data as any) ?? []);
+      setXrayOrders((xo.data as any) ?? []);
+      setOtBookings((ot.data as any) ?? []);
+
+      const saleIds = (sl.data ?? []).map((s: any) => s.id);
+      if (saleIds.length) {
+        const { data: pays } = await supabase.from("invoice_payments" as any).select("*").in("sale_id", saleIds).order("paid_on", { ascending: false });
+        setPayments((pays as any) ?? []);
+      } else setPayments([]);
       setLoading(false);
     })();
   }, [id]);
@@ -64,7 +92,12 @@ export default function PatientProfile() {
   if (!p) return <div className="p-10 text-center">Patient not found. <Link to="/patients" className="text-primary underline">Back</Link></div>;
 
   const a = age(p.dob);
-  const totalSpent = sales.reduce((s, x) => s + Number(x.total_usd ?? 0), 0);
+  const totalBilled = sales.reduce((s, x) => s + Number(x.total_usd ?? 0), 0);
+  const totalPaid = sales.reduce((s, x) => s + Number(x.amount_paid_usd ?? 0), 0);
+  const totalDue = sales.reduce((s, x) => s + Number(x.due_usd ?? 0), 0);
+  const otSpent = otBookings.filter(o => o.status === "completed").reduce((s, x) => s + Number(x.charges_usd ?? 0), 0);
+  const labSpent = labOrders.reduce((s, x) => s + Number(x.total_usd ?? 0), 0);
+  const xraySpent = xrayOrders.reduce((s, x) => s + Number(x.total_usd ?? 0), 0);
   const activeCard = cards.find(c => c.status === "active");
 
   return (
@@ -120,38 +153,44 @@ export default function PatientProfile() {
       </Card>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         {[
           { label: "OPD Visits", v: visits.length, Icon: Stethoscope, tone: "bg-primary/10 text-primary" },
           { label: "Records", v: records.length, Icon: ClipboardList, tone: "bg-indigo-500/10 text-indigo-600" },
           { label: "Prescriptions", v: rx.length, Icon: Pill, tone: "bg-blue-500/10 text-blue-600" },
-          { label: "Lab Tests", v: labOnly.length, Icon: FlaskConical, tone: "bg-purple-500/10 text-purple-600" },
-          { label: "X-Ray / Imaging", v: xrays.length, Icon: ScanLine, tone: "bg-cyan-500/10 text-cyan-600" },
-          { label: "Total Spent", v: fmtUSD(totalSpent), Icon: Activity, tone: "bg-success/10 text-success" },
+          { label: "Lab Orders", v: labOrders.length, Icon: FlaskConical, tone: "bg-purple-500/10 text-purple-600" },
+          { label: "X-Ray / Imaging", v: xrayOrders.length + xrays.length, Icon: ScanLine, tone: "bg-cyan-500/10 text-cyan-600" },
+          { label: "Surgeries", v: otBookings.length, Icon: Scissors, tone: "bg-rose-500/10 text-rose-600" },
+          { label: "Total Billed", v: fmtUSD(totalBilled + otSpent + labSpent + xraySpent), Icon: Wallet, tone: "bg-success/10 text-success" },
+          { label: "Outstanding Due", v: fmtUSD(totalDue), Icon: Receipt, tone: totalDue > 0 ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground" },
         ].map(({ label, v, Icon, tone }) => (
           <Card key={label} className="p-4 shadow-soft hover:shadow-card transition-all">
             <div className="flex items-center gap-3">
-              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${tone}`}><Icon className="h-5 w-5" /></div>
+              <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${tone}`}><Icon className="h-5 w-5" /></div>
               <div className="min-w-0">
                 <div className="text-xs text-muted-foreground truncate">{label}</div>
-                <div className="text-lg font-bold leading-tight">{v}</div>
+                <div className="text-lg font-bold leading-tight truncate">{v}</div>
               </div>
             </div>
           </Card>
         ))}
       </div>
 
-      <SummaryPanel records={records} labs={labs} visits={visits} rx={rx} card={activeCard} />
+      <SummaryPanel records={records} labs={labs} visits={visits} rx={rx} card={activeCard}
+        totalBilled={totalBilled} totalPaid={totalPaid} totalDue={totalDue} />
 
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="overview"><Activity className="h-4 w-4 mr-1" />Overview</TabsTrigger>
           <TabsTrigger value="records"><ClipboardList className="h-4 w-4 mr-1" />Medical Records</TabsTrigger>
           <TabsTrigger value="lab"><FlaskConical className="h-4 w-4 mr-1" />Lab Reports</TabsTrigger>
+          <TabsTrigger value="laborders"><FlaskConical className="h-4 w-4 mr-1" />Lab Orders</TabsTrigger>
           <TabsTrigger value="xray"><ScanLine className="h-4 w-4 mr-1" />X-Ray / Imaging</TabsTrigger>
+          <TabsTrigger value="surgery"><Scissors className="h-4 w-4 mr-1" />Surgery</TabsTrigger>
           <TabsTrigger value="visits"><Calendar className="h-4 w-4 mr-1" />Visits</TabsTrigger>
           <TabsTrigger value="prescriptions"><Pill className="h-4 w-4 mr-1" />Prescriptions</TabsTrigger>
           <TabsTrigger value="pharmacy"><Receipt className="h-4 w-4 mr-1" />Pharmacy</TabsTrigger>
+          <TabsTrigger value="billing"><Wallet className="h-4 w-4 mr-1" />Billing</TabsTrigger>
           <TabsTrigger value="insurance"><CreditCard className="h-4 w-4 mr-1" />Insurance</TabsTrigger>
           <TabsTrigger value="gallery"><Images className="h-4 w-4 mr-1" />Gallery</TabsTrigger>
           <TabsTrigger value="info"><FileText className="h-4 w-4 mr-1" />Info</TabsTrigger>
@@ -160,30 +199,166 @@ export default function PatientProfile() {
         <TabsContent value="gallery"><PatientPhotoGallery patientId={p.id} /></TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
-          <Timeline visits={visits} records={records} labs={labs} rx={rx} sales={sales} />
+          <Timeline visits={visits} records={records} labs={labs} rx={rx} sales={sales} otBookings={otBookings} labOrders={labOrders} xrayOrders={xrayOrders} />
         </TabsContent>
 
         <TabsContent value="records"><MedicalRecordsTab patientId={p.id} /></TabsContent>
         <TabsContent value="lab"><LabReportsTab patientId={p.id} /></TabsContent>
 
+        <TabsContent value="laborders">
+          <Card className="shadow-soft">
+            {labOrders.length === 0 ? (
+              <Empty Icon={FlaskConical} text="No lab orders yet" cta={{ to: "/laboratory", label: "Create Lab Order" }} />
+            ) : (
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">{labOrders.length} order(s) — Total: <span className="font-semibold text-foreground">{fmtUSD(labSpent)}</span></div>
+                  <Button asChild size="sm" variant="outline"><Link to="/laboratory"><FlaskConical className="h-4 w-4 mr-1" />New Order</Link></Button>
+                </div>
+                {labOrders.map(o => (
+                  <Card key={o.id} className="p-4 border-l-4 border-l-purple-500">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-semibold">{o.order_no}</span>
+                        <Badge className={`capitalize ${statusTone[o.status] ?? ""}`}>{o.status?.replace("_", " ")}</Badge>
+                        {o.priority !== "normal" && <Badge variant="outline" className="capitalize">{o.priority}</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{new Date(o.ordered_on).toLocaleDateString()} • {o.doctor_name ?? "—"} • <span className="font-semibold text-foreground">{fmtUSD(Number(o.total_usd))}</span></div>
+                    </div>
+                    {o.lab_order_items?.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                        {o.lab_order_items.map((it: any) => (
+                          <div key={it.id} className="text-sm border rounded-md p-2 bg-muted/30">
+                            <div className="flex justify-between gap-2">
+                              <div className="font-medium">{it.test_name}</div>
+                              <Badge variant="outline" className="capitalize text-[10px]">{it.status}</Badge>
+                            </div>
+                            {it.result_value && <div className="mt-1 text-xs"><span className="text-muted-foreground">Result: </span>{it.result_value} {it.result_unit ?? ""} {it.flag && <Badge className="ml-1 text-[10px]">{it.flag}</Badge>}</div>}
+                            {it.reference_range && <div className="text-[11px] text-muted-foreground">Ref: {it.reference_range}</div>}
+                            {it.result_file_url && <a href={it.result_file_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"><FileText className="h-3 w-3" />View report<ExternalLink className="h-3 w-3" /></a>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
         <TabsContent value="xray">
           <Card className="shadow-soft">
-            {xrays.length === 0 ? (
-              <Empty Icon={ScanLine} text="No X-Ray or imaging reports yet" />
+            {xrayOrders.length === 0 && xrays.length === 0 ? (
+              <Empty Icon={ScanLine} text="No X-Ray or imaging reports yet" cta={{ to: "/xray", label: "Create X-Ray Order" }} />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
-                {xrays.map(x => (
-                  <Card key={x.id} className="p-4 border-l-4 border-l-cyan-500">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-semibold">{x.test_name}</div>
-                        <div className="text-xs text-muted-foreground capitalize">{x.test_type}</div>
+              <div className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">{xrayOrders.length} order(s) • {xrays.length} report(s) — Total: <span className="font-semibold text-foreground">{fmtUSD(xraySpent)}</span></div>
+                  <Button asChild size="sm" variant="outline"><Link to="/xray"><ScanLine className="h-4 w-4 mr-1" />New Order</Link></Button>
+                </div>
+                {xrayOrders.map(o => (
+                  <Card key={o.id} className="p-4 border-l-4 border-l-cyan-500">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-semibold">{o.order_no}</span>
+                        <Badge className={`capitalize ${statusTone[o.status] ?? ""}`}>{o.status?.replace("_", " ")}</Badge>
                       </div>
-                      <Badge variant="outline" className="capitalize">{x.status}</Badge>
+                      <div className="text-xs text-muted-foreground">{new Date(o.ordered_on).toLocaleDateString()} • {o.doctor_name ?? "—"} • <span className="font-semibold text-foreground">{fmtUSD(Number(o.total_usd))}</span></div>
                     </div>
-                    <div className="mt-2 text-xs text-muted-foreground">{new Date(x.test_date).toLocaleDateString()}</div>
-                    {x.results && <div className="mt-2 text-sm">{x.results}</div>}
-                    {x.file_url && <a href={x.file_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-primary underline">View report</a>}
+                    {o.xray_order_items?.map((it: any) => (
+                      <div key={it.id} className="border rounded-lg p-3 bg-muted/20 mb-2 last:mb-0">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <div className="font-semibold">{it.test_name}</div>
+                            <div className="text-xs text-muted-foreground">{[it.modality, it.body_part].filter(Boolean).join(" • ")}</div>
+                          </div>
+                          <Badge variant="outline" className="capitalize">{it.status}</Badge>
+                        </div>
+                        {it.findings && <div className="mt-2 text-sm"><span className="text-xs uppercase tracking-wide text-muted-foreground">Findings: </span>{it.findings}</div>}
+                        {it.impression && <div className="mt-1 text-sm"><span className="text-xs uppercase tracking-wide text-muted-foreground">Impression: </span><span className="font-medium">{it.impression}</span></div>}
+                        {it.radiologist_name && <div className="mt-1 text-xs text-muted-foreground">Radiologist: {it.radiologist_name}</div>}
+                        {it.image_urls?.length > 0 && (
+                          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            {it.image_urls.map((url: string, i: number) => (
+                              <a key={i} href={url} target="_blank" rel="noreferrer" className="group relative aspect-square rounded-md overflow-hidden border bg-black">
+                                <img src={url} alt={`X-Ray ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                  <ExternalLink className="h-5 w-5 text-white" />
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {it.report_file_url && (
+                          <a href={it.report_file_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                            <FileText className="h-3 w-3" />View full report<ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </Card>
+                ))}
+                {xrays.length > 0 && (
+                  <div>
+                    <div className="text-sm font-semibold mb-2 mt-4">Legacy Imaging Reports</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {xrays.map(x => (
+                        <Card key={x.id} className="p-4 border-l-4 border-l-cyan-500">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="font-semibold">{x.test_name}</div>
+                              <div className="text-xs text-muted-foreground capitalize">{x.test_type}</div>
+                            </div>
+                            <Badge className={`capitalize ${statusTone[x.status] ?? ""}`}>{x.status}</Badge>
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">{new Date(x.test_date).toLocaleDateString()}</div>
+                          {x.results && <div className="mt-2 text-sm">{x.results}</div>}
+                          {x.file_url && <a href={x.file_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"><FileText className="h-3 w-3" />View report<ExternalLink className="h-3 w-3" /></a>}
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="surgery">
+          <Card className="shadow-soft">
+            {otBookings.length === 0 ? (
+              <Empty Icon={Scissors} text="No surgeries scheduled" cta={{ to: "/ot", label: "Schedule Surgery" }} />
+            ) : (
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">{otBookings.length} booking(s) — Completed total: <span className="font-semibold text-foreground">{fmtUSD(otSpent)}</span></div>
+                  <Button asChild size="sm" variant="outline"><Link to="/ot"><Scissors className="h-4 w-4 mr-1" />New Surgery</Link></Button>
+                </div>
+                {otBookings.map(o => (
+                  <Card key={o.id} className="p-4 border-l-4 border-l-rose-500">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold flex items-center gap-2">
+                          <Scissors className="h-4 w-4 text-rose-600" />{o.procedure_name}
+                          <Badge className={`capitalize ${statusTone[o.status] ?? ""}`}>{o.status?.replace("_", " ")}</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {new Date(o.scheduled_at).toLocaleString()} • {o.theater_room ?? "—"} • Surgeon: {o.surgeon_name ?? "—"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold">{fmtUSD(Number(o.charges_usd))}</div>
+                        {o.duration_minutes && <div className="text-xs text-muted-foreground">{o.duration_minutes} min</div>}
+                      </div>
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      {o.anesthesia_type && <div><span className="text-xs uppercase tracking-wide text-muted-foreground">Anesthesia: </span>{o.anesthesia_type}</div>}
+                      {o.anesthetist_name && <div><span className="text-xs uppercase tracking-wide text-muted-foreground">Anesthetist: </span>{o.anesthetist_name}</div>}
+                      {o.pre_op_notes && <div className="md:col-span-2"><span className="text-xs uppercase tracking-wide text-muted-foreground">Pre-op: </span>{o.pre_op_notes}</div>}
+                      {o.post_op_notes && <div className="md:col-span-2"><span className="text-xs uppercase tracking-wide text-muted-foreground">Post-op: </span>{o.post_op_notes}</div>}
+                      {o.complications && <div className="md:col-span-2 text-destructive"><span className="text-xs uppercase tracking-wide">Complications: </span>{o.complications}</div>}
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -241,7 +416,7 @@ export default function PatientProfile() {
           <Card className="shadow-soft">
             {sales.length === 0 ? <Empty Icon={Receipt} text="No pharmacy purchases" /> : (
               <Table>
-                <TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Items</TableHead><TableHead>Payment</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Items</TableHead><TableHead>Payment</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {sales.map(s => (
                     <TableRow key={s.id}>
@@ -249,6 +424,7 @@ export default function PatientProfile() {
                       <TableCell>{new Date(s.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>{s.medicine_sale_items?.length ?? 0}</TableCell>
                       <TableCell className="capitalize">{s.payment_method}</TableCell>
+                      <TableCell><Badge className={`capitalize ${statusTone[s.status] ?? ""}`}>{s.status}</Badge></TableCell>
                       <TableCell className="text-right font-medium">{fmtUSD(Number(s.total_usd))}</TableCell>
                     </TableRow>
                   ))}
@@ -256,6 +432,73 @@ export default function PatientProfile() {
               </Table>
             )}
           </Card>
+        </TabsContent>
+
+        <TabsContent value="billing">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Card className="p-4 shadow-soft border-l-4 border-l-success">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Billed (Pharmacy)</div>
+                <div className="text-2xl font-bold mt-1">{fmtUSD(totalBilled)}</div>
+              </Card>
+              <Card className="p-4 shadow-soft border-l-4 border-l-primary">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Paid</div>
+                <div className="text-2xl font-bold mt-1 text-success">{fmtUSD(totalPaid)}</div>
+              </Card>
+              <Card className={`p-4 shadow-soft border-l-4 ${totalDue > 0 ? "border-l-destructive" : "border-l-muted"}`}>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Outstanding Due</div>
+                <div className={`text-2xl font-bold mt-1 ${totalDue > 0 ? "text-destructive" : ""}`}>{fmtUSD(totalDue)}</div>
+              </Card>
+            </div>
+
+            <Card className="shadow-soft">
+              <div className="p-4 border-b flex items-center justify-between">
+                <div className="font-semibold flex items-center gap-2"><Receipt className="h-4 w-4" />Invoices</div>
+                <Button asChild size="sm" variant="outline"><Link to="/due-management"><Wallet className="h-4 w-4 mr-1" />Manage Dues</Link></Button>
+              </div>
+              {sales.length === 0 ? <Empty Icon={Receipt} text="No invoices yet" /> : (
+                <Table>
+                  <TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Items</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Paid</TableHead><TableHead className="text-right">Due</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {sales.map(s => (
+                      <TableRow key={s.id}>
+                        <TableCell className="font-mono">{s.invoice_no}</TableCell>
+                        <TableCell>{new Date(s.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>{s.medicine_sale_items?.length ?? 0}</TableCell>
+                        <TableCell className="text-right">{fmtUSD(Number(s.total_usd))}</TableCell>
+                        <TableCell className="text-right text-success">{fmtUSD(Number(s.amount_paid_usd ?? 0))}</TableCell>
+                        <TableCell className={`text-right ${Number(s.due_usd) > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}`}>{fmtUSD(Number(s.due_usd ?? 0))}</TableCell>
+                        <TableCell><Badge className={`capitalize ${statusTone[s.status] ?? ""}`}>{s.status}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Card>
+
+            <Card className="shadow-soft">
+              <div className="p-4 border-b font-semibold flex items-center gap-2"><Wallet className="h-4 w-4" />Payment History</div>
+              {payments.length === 0 ? <Empty Icon={Wallet} text="No payments recorded yet" /> : (
+                <Table>
+                  <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Invoice</TableHead><TableHead>Method</TableHead><TableHead>Reference</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {payments.map(pay => {
+                      const sale = sales.find(s => s.id === pay.sale_id);
+                      return (
+                        <TableRow key={pay.id}>
+                          <TableCell>{new Date(pay.paid_on).toLocaleDateString()}</TableCell>
+                          <TableCell className="font-mono">{sale?.invoice_no ?? "—"}</TableCell>
+                          <TableCell className="capitalize">{pay.payment_method}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{pay.reference ?? "—"}</TableCell>
+                          <TableCell className="text-right font-semibold text-success">{fmtUSD(Number(pay.amount_usd))}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="insurance">
@@ -326,16 +569,17 @@ function Field({ label, value }: { label: string; value: any }) {
   );
 }
 
-function Empty({ Icon, text }: { Icon: any; text: string }) {
+function Empty({ Icon, text, cta }: { Icon: any; text: string; cta?: { to: string; label: string } }) {
   return (
     <div className="p-12 text-center text-muted-foreground">
       <Icon className="h-10 w-10 mx-auto mb-2 opacity-40" />
       <p>{text}</p>
+      {cta && <Button asChild size="sm" variant="outline" className="mt-4"><Link to={cta.to}>{cta.label}</Link></Button>}
     </div>
   );
 }
 
-function Timeline({ visits, records, labs, rx, sales }: any) {
+function Timeline({ visits, records, labs, rx, sales, otBookings, labOrders, xrayOrders }: any) {
   const events = useMemo(() => {
     const items: any[] = [];
     visits.forEach((v: any) => items.push({ id: `v-${v.id}`, date: v.visit_date, type: "Visit", icon: Calendar, tone: "bg-primary/10 text-primary", title: v.chief_complaint || "OPD Visit", meta: `Token #${v.token_number ?? "—"}` }));
@@ -344,10 +588,13 @@ function Timeline({ visits, records, labs, rx, sales }: any) {
       const isXray = /x.?ray|imaging|ct|mri|ultrasound/i.test(l.test_type ?? l.test_name ?? "");
       items.push({ id: `l-${l.id}`, date: l.test_date, type: isXray ? "Imaging" : "Lab", icon: isXray ? ScanLine : FlaskConical, tone: isXray ? "bg-cyan-500/10 text-cyan-600" : "bg-purple-500/10 text-purple-600", title: l.test_name, meta: l.status });
     });
+    (labOrders ?? []).forEach((o: any) => items.push({ id: `lo-${o.id}`, date: o.ordered_on, type: "Lab Order", icon: FlaskConical, tone: "bg-purple-500/10 text-purple-600", title: o.order_no, meta: `${o.lab_order_items?.length ?? 0} test(s) — ${fmtUSD(Number(o.total_usd))}` }));
+    (xrayOrders ?? []).forEach((o: any) => items.push({ id: `xo-${o.id}`, date: o.ordered_on, type: "X-Ray Order", icon: ScanLine, tone: "bg-cyan-500/10 text-cyan-600", title: o.order_no, meta: `${o.xray_order_items?.length ?? 0} study — ${fmtUSD(Number(o.total_usd))}` }));
+    (otBookings ?? []).forEach((o: any) => items.push({ id: `ot-${o.id}`, date: o.scheduled_at, type: "Surgery", icon: Scissors, tone: "bg-rose-500/10 text-rose-600", title: o.procedure_name, meta: `${o.status} — ${fmtUSD(Number(o.charges_usd))}` }));
     rx.forEach((r: any) => items.push({ id: `rx-${r.id}`, date: r.created_at, type: "Prescription", icon: Pill, tone: "bg-blue-500/10 text-blue-600", title: r.diagnosis || "Prescription", meta: `${r.prescription_items?.length ?? 0} items` }));
     sales.forEach((s: any) => items.push({ id: `s-${s.id}`, date: s.created_at, type: "Pharmacy", icon: Receipt, tone: "bg-warning/10 text-warning", title: `Invoice ${s.invoice_no}`, meta: fmtUSD(Number(s.total_usd)) }));
-    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 30);
-  }, [visits, records, labs, rx, sales]);
+    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 50);
+  }, [visits, records, labs, rx, sales, otBookings, labOrders, xrayOrders]);
 
   if (events.length === 0) {
     return <Card className="shadow-soft"><Empty Icon={Activity} text="No activity yet for this patient" /></Card>;
@@ -382,17 +629,16 @@ function Timeline({ visits, records, labs, rx, sales }: any) {
   );
 }
 
-function SummaryPanel({ records, labs, visits, rx, card }: { records: any[]; labs: any[]; visits: any[]; rx: any[]; card?: any }) {
+function SummaryPanel({ records, labs, visits, rx, card, totalBilled, totalPaid, totalDue }: any) {
   const latest = records[0];
   const latestVisit = visits[0];
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const upcoming = records
-    .filter(r => r.follow_up_date && new Date(r.follow_up_date) >= today)
-    .sort((a, b) => new Date(a.follow_up_date).getTime() - new Date(b.follow_up_date).getTime())[0];
-  const pendingLabs = labs.filter(l => l.status === "pending" || l.status === "in_progress").length;
+    .filter((r: any) => r.follow_up_date && new Date(r.follow_up_date) >= today)
+    .sort((a: any, b: any) => new Date(a.follow_up_date).getTime() - new Date(b.follow_up_date).getTime())[0];
+  const pendingLabs = labs.filter((l: any) => l.status === "pending" || l.status === "in_progress").length;
 
   const daysUntil = upcoming ? Math.ceil((new Date(upcoming.follow_up_date).getTime() - today.getTime()) / 86400000) : null;
-  if (!latest && !latestVisit && !upcoming && !card) return null;
 
   return (
     <Card className="p-5 shadow-soft border-l-4 border-l-primary">
@@ -401,7 +647,7 @@ function SummaryPanel({ records, labs, visits, rx, card }: { records: any[]; lab
         <h2 className="font-semibold">Patient Summary</h2>
         <span className="text-xs text-muted-foreground">Quick overview</span>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="rounded-lg border bg-card/50 p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-sm font-medium"><Stethoscope className="h-4 w-4 text-primary" />Latest Consultation</div>
@@ -437,6 +683,18 @@ function SummaryPanel({ records, labs, visits, rx, card }: { records: any[]; lab
               {upcoming.doctor_name && <div className="text-xs text-muted-foreground">With Dr. {upcoming.doctor_name}</div>}
             </div>
           ) : <div className="text-sm text-muted-foreground">No follow-up scheduled</div>}
+        </div>
+
+        <div className="rounded-lg border bg-card/50 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm font-medium"><Wallet className="h-4 w-4 text-success" />Billing</div>
+            {totalDue > 0 && <Badge className="bg-destructive/10 text-destructive">Due</Badge>}
+          </div>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Billed</span><span className="font-medium">{fmtUSD(totalBilled)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Paid</span><span className="font-medium text-success">{fmtUSD(totalPaid)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Due</span><span className={`font-bold ${totalDue > 0 ? "text-destructive" : ""}`}>{fmtUSD(totalDue)}</span></div>
+          </div>
         </div>
 
         <div className="rounded-lg border bg-card/50 p-4">
