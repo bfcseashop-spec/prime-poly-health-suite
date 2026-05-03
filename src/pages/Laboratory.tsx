@@ -17,7 +17,7 @@ import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
 import Barcode from "react-barcode";
 
-type Test = { id: string; code: string; name: string; category: string; sample_type: string | null; unit: string | null; reference_range: string | null; price_usd: number; turnaround_hours: number | null; active: boolean };
+type Test = { id: string; code: string; name: string; category: string; sample_type: string | null; unit: string | null; reference_range: string | null; price_usd: number; turnaround_hours: number | null; active: boolean; description?: string | null };
 type Patient = { id: string; full_name: string; patient_code: string; phone: string | null; dob: string | null; gender: string | null };
 
 const CATS = ["hematology", "biochemistry", "endocrinology", "urinalysis", "microbiology", "serology", "immunology", "general"];
