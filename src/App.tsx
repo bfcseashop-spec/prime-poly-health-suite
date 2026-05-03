@@ -13,6 +13,7 @@ import Patients from "./pages/Patients";
 import OPD from "./pages/OPD";
 import Prescriptions from "./pages/Prescriptions";
 import Pharmacy from "./pages/Pharmacy";
+import Expenses from "./pages/Expenses";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
