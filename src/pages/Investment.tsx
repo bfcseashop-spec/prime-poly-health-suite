@@ -187,8 +187,15 @@ export default function Investment() {
     return map;
   }, [contributions]);
 
+  const investmentsTotal = useMemo(
+    () => investments.reduce((s, x) => s + Number(x.total_amount_usd || 0), 0),
+    [investments]
+  );
+
   const totals = useMemo(() => {
-    const totalCommitted = shareholders.reduce((s, x) => s + Number(x.committed_capital_usd || 0), 0);
+    const totalCommitted = investmentsTotal > 0
+      ? investmentsTotal
+      : shareholders.reduce((s, x) => s + Number(x.committed_capital_usd || 0), 0);
     const totalPaid = contributions.reduce((s, x) => s + Number(x.amount_usd || 0), 0);
     return {
       totalCommitted,
@@ -197,7 +204,7 @@ export default function Investment() {
       contribCount: contributions.length,
       count: shareholders.length,
     };
-  }, [shareholders, contributions]);
+  }, [shareholders, contributions, investmentsTotal]);
 
   const months = useMemo(() => {
     const set = new Set<string>();
