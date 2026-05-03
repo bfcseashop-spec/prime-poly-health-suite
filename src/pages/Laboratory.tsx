@@ -371,14 +371,26 @@ export default function Laboratory() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="catalog" className="mt-4">
+        <TabsContent value="catalog" className="mt-4 space-y-4">
+          {/* Catalog summary cards */}
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Card className="shadow-soft border-l-4 border-l-primary"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Tests</p><p className="text-2xl font-bold mt-1">{tests.length}</p></CardContent></Card>
+            <Card className="shadow-soft border-l-4 border-l-success"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Active</p><p className="text-2xl font-bold text-success mt-1">{tests.filter(t => t.active).length}</p></CardContent></Card>
+            <Card className="shadow-soft border-l-4 border-l-warning"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Inactive</p><p className="text-2xl font-bold text-warning mt-1">{tests.filter(t => !t.active).length}</p></CardContent></Card>
+            <Card className="shadow-soft border-l-4 border-l-accent"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Avg Price</p><p className="text-2xl font-bold mt-1">{fmtUSD(tests.length ? tests.reduce((a, t) => a + Number(t.price_usd), 0) / tests.length : 0)}</p></CardContent></Card>
+          </div>
+
           <Card className="shadow-soft">
-            <CardHeader>
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
               <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2"><TestTube className="h-5 w-5 text-primary" />Test Catalog</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Manage all available laboratory tests, prices and barcodes</p>
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input className="pl-9 h-9" placeholder="Search test…" value={testQ} onChange={e => setTestQ(e.target.value)} />
+                    <Input className="pl-9 h-9" placeholder="Search test / code…" value={testQ} onChange={e => setTestQ(e.target.value)} />
                   </div>
                   <Select value={testCat} onValueChange={setTestCat}>
                     <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
@@ -387,39 +399,124 @@ export default function Laboratory() {
                       {CATS.map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <Button onClick={() => setTestDlg({ active: true, category: "general", price_usd: 0, turnaround_hours: 24 })}><Plus className="h-4 w-4 mr-2" />Add Test</Button>
                 </div>
-                <Button onClick={() => setTestDlg({ active: true, category: "general", price_usd: 0, turnaround_hours: 24 })}><Plus className="h-4 w-4 mr-2" />Add Test</Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader><TableRow>
-                  <TableHead>Code</TableHead><TableHead>Test</TableHead><TableHead>Category</TableHead>
-                  <TableHead>Sample</TableHead><TableHead>Reference</TableHead>
-                  <TableHead className="text-right">Price</TableHead><TableHead></TableHead>
-                </TableRow></TableHeader>
+                <TableHeader>
+                  <TableRow className="bg-muted/40">
+                    <TableHead className="w-24">Code</TableHead>
+                    <TableHead>Test Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Sample</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead className="text-center">TAT</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-right w-44">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
-                  {filteredTests.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-12">No tests</TableCell></TableRow> :
-                    filteredTests.map(t => (
-                      <TableRow key={t.id}>
-                        <TableCell className="font-mono text-xs">{t.code}</TableCell>
-                        <TableCell className="text-sm"><div className="font-medium">{t.name}</div>{!t.active && <Badge variant="outline" className="text-xs mt-1">inactive</Badge>}</TableCell>
-                        <TableCell className="text-sm capitalize">{t.category}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{t.sample_type ?? "—"}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{t.reference_range ?? "—"} {t.unit ? `(${t.unit})` : ""}</TableCell>
-                        <TableCell className="text-right font-medium">{fmtUSD(Number(t.price_usd))}</TableCell>
-                        <TableCell className="space-x-1">
-                          <Button size="sm" variant="outline" onClick={() => setTestDlg(t)}>Edit</Button>
-                          <Button size="sm" variant="ghost" onClick={() => deleteTest(t.id)}><Trash2 className="h-3 w-3" /></Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                  {filteredTests.length === 0 ? (
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-12">
+                      <TestTube className="h-10 w-10 mx-auto opacity-30 mb-2" />No tests found
+                    </TableCell></TableRow>
+                  ) : filteredTests.map(t => (
+                    <TableRow key={t.id} className="hover:bg-accent/30">
+                      <TableCell><Badge variant="outline" className="font-mono text-xs">{t.code ?? "—"}</Badge></TableCell>
+                      <TableCell>
+                        <div className="font-medium text-sm">{t.name}</div>
+                        {t.description && <p className="text-xs text-muted-foreground line-clamp-1">{t.description}</p>}
+                      </TableCell>
+                      <TableCell><Badge variant="secondary" className="capitalize">{t.category}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{t.sample_type ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {t.reference_range ?? "—"}{t.unit ? <span className="ml-1 text-foreground/70">({t.unit})</span> : null}
+                      </TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">{t.turnaround_hours ?? 24}h</TableCell>
+                      <TableCell className="text-right font-semibold text-primary">{fmtUSD(Number(t.price_usd))}</TableCell>
+                      <TableCell className="text-center">
+                        {t.active
+                          ? <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15">Active</Badge>
+                          : <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="icon" variant="ghost" title="View" onClick={() => setViewTest(t)}><Eye className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Edit" onClick={() => setTestDlg(t)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Print Barcode" onClick={() => setBarcodeTest(t)}><BarcodeIcon className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Delete" className="text-destructive hover:text-destructive" onClick={() => deleteTest(t.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* View Test */}
+      <Dialog open={!!viewTest} onOpenChange={o => !o && setViewTest(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><TestTube className="h-5 w-5 text-primary" />{viewTest?.name}</DialogTitle>
+          </DialogHeader>
+          {viewTest && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-mono">{viewTest.code ?? "—"}</Badge>
+                <Badge variant="secondary" className="capitalize">{viewTest.category}</Badge>
+                {viewTest.active ? <Badge className="bg-success/15 text-success border-success/30">Active</Badge> : <Badge variant="outline">Inactive</Badge>}
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="border rounded-md p-3"><p className="text-xs text-muted-foreground">Price</p><p className="text-xl font-bold text-primary mt-1">{fmtUSD(Number(viewTest.price_usd))}</p></div>
+                <div className="border rounded-md p-3"><p className="text-xs text-muted-foreground">Turnaround</p><p className="text-xl font-bold mt-1">{viewTest.turnaround_hours ?? 24}h</p></div>
+                <div className="border rounded-md p-3"><p className="text-xs text-muted-foreground">Sample Type</p><p className="font-medium mt-1">{viewTest.sample_type ?? "—"}</p></div>
+                <div className="border rounded-md p-3"><p className="text-xs text-muted-foreground">Unit</p><p className="font-medium mt-1">{viewTest.unit ?? "—"}</p></div>
+                <div className="col-span-2 border rounded-md p-3"><p className="text-xs text-muted-foreground">Reference Range</p><p className="font-medium mt-1">{viewTest.reference_range ?? "—"}</p></div>
+              </div>
+              {viewTest.code && (
+                <div className="border rounded-md p-3 flex justify-center bg-white">
+                  <Barcode value={viewTest.code} height={50} fontSize={12} />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewTest(null)}>Close</Button>
+            <Button onClick={() => { setBarcodeTest(viewTest); setViewTest(null); }}><BarcodeIcon className="h-4 w-4 mr-2" />Print Barcode</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Barcode */}
+      <Dialog open={!!barcodeTest} onOpenChange={o => !o && setBarcodeTest(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Print Barcode</DialogTitle></DialogHeader>
+          {barcodeTest && (
+            <div id="barcode-print" className="border rounded-md p-4 bg-white text-center space-y-2">
+              <p className="text-sm font-bold">{barcodeTest.name}</p>
+              <div className="flex justify-center"><Barcode value={barcodeTest.code || barcodeTest.id.slice(0, 12)} height={60} fontSize={14} /></div>
+              <p className="text-xs text-muted-foreground capitalize">{barcodeTest.category} · {fmtUSD(Number(barcodeTest.price_usd))}</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBarcodeTest(null)}>Close</Button>
+            <Button onClick={() => {
+              const html = document.getElementById("barcode-print")?.outerHTML;
+              const w = window.open("", "_blank", "width=400,height=300");
+              if (w && html) {
+                w.document.write(`<html><head><title>Barcode</title><style>body{font-family:Arial;padding:20px;text-align:center}</style></head><body>${html}<script>window.print();</script></body></html>`);
+                w.document.close();
+              }
+            }}><Printer className="h-4 w-4 mr-2" />Print</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add/Edit Test */}
       <Dialog open={!!testDlg} onOpenChange={o => !o && setTestDlg(null)}>
