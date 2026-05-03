@@ -71,7 +71,7 @@ export default function Laboratory() {
     setOrders(ords);
     const ids = Array.from(new Set(ords.map(o => o.patient_id).filter(Boolean)));
     if (ids.length) {
-      const { data: pts } = await supabase.from("patients").select("id, full_name, patient_code, phone").in("id", ids as string[]);
+      const { data: pts } = await supabase.from("patients").select("id, full_name, patient_code, phone, dob, gender").in("id", ids as string[]);
       const map: Record<string, Patient> = {};
       (pts ?? []).forEach((p: any) => { map[p.id] = p; });
       setPatients(map);
@@ -84,7 +84,7 @@ export default function Laboratory() {
     }
   };
   const loadAllPatients = async () => {
-    const { data } = await supabase.from("patients").select("id, full_name, patient_code, phone").order("created_at", { ascending: false }).limit(500);
+    const { data } = await supabase.from("patients").select("id, full_name, patient_code, phone, dob, gender").order("created_at", { ascending: false }).limit(500);
     setAllPatients((data as any[]) ?? []);
   };
 
