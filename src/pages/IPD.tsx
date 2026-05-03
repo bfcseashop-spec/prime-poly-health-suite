@@ -351,9 +351,14 @@ export default function IPD() {
                         <TableCell><Badge>{days}d</Badge></TableCell>
                         <TableCell className="text-right font-semibold">{fmtUSD(charges)}</TableCell>
                         <TableCell>
-                          <Button size="sm" variant="outline" onClick={() => setDischargeFor(a)}>
-                            <LogOut className="h-3 w-3 mr-1" />Discharge
-                          </Button>
+                          <div className="flex gap-1.5 justify-end">
+                            <Button size="sm" variant="outline" onClick={() => openTransfer(a)}>
+                              <ArrowRightLeft className="h-3 w-3 mr-1" />Transfer
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setDischargeFor(a)}>
+                              <LogOut className="h-3 w-3 mr-1" />Discharge
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
