@@ -55,7 +55,7 @@ const initials = (name: string) =>
 
 const emptyForm = {
   id: "" as string | "",
-  full_name: "", age: "" as any, gender: "", position: "doctor",
+  full_name: "", age: "" as any, gender: "", position: "nurse",
   department: "", phone: "", email: "", address: "",
   joining_date: "", monthly_salary_usd: "" as any,
   status: "active", qualification: "", notes: "", photo_url: "",
