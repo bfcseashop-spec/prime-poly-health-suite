@@ -25,6 +25,7 @@ import Medicines from "./pages/Medicines";
 import OperationTheater from "./pages/OperationTheater";
 import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
+import IPD from "./pages/IPD";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/patients" element={<Shell><Patients /></Shell>} />
               <Route path="/patients/:id" element={<Shell><PatientProfile /></Shell>} />
               <Route path="/opd" element={<Shell><OPD /></Shell>} />
+              <Route path="/ipd" element={<ProtectedRoute roles={["admin","doctor","nurse","receptionist"]}><AppLayout><IPD /></AppLayout></ProtectedRoute>} />
               <Route path="/prescriptions" element={<ProtectedRoute roles={["doctor"]}><AppLayout><Prescriptions /></AppLayout></ProtectedRoute>} />
               <Route path="/pos" element={<ProtectedRoute roles={["admin","pharmacist","receptionist","accountant"]}><AppLayout><POS /></AppLayout></ProtectedRoute>} />
               <Route path="/pharmacy" element={<ProtectedRoute roles={["admin","pharmacist","receptionist","accountant"]}><AppLayout><POS /></AppLayout></ProtectedRoute>} />

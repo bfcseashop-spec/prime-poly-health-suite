@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      admissions: {
+        Row: {
+          admission_no: string
+          admission_type: string
+          admitted_at: string
+          bed_no: string | null
+          created_at: string
+          created_by: string | null
+          daily_rate_usd: number
+          diagnosis: string | null
+          discharge_notes: string | null
+          discharged_at: string | null
+          doctor_id: string | null
+          doctor_name: string | null
+          expected_discharge: string | null
+          id: string
+          notes: string | null
+          patient_id: string
+          reason: string | null
+          room_id: string | null
+          status: string
+          total_charges_usd: number
+          updated_at: string
+        }
+        Insert: {
+          admission_no?: string
+          admission_type?: string
+          admitted_at?: string
+          bed_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          daily_rate_usd?: number
+          diagnosis?: string | null
+          discharge_notes?: string | null
+          discharged_at?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          expected_discharge?: string | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          reason?: string | null
+          room_id?: string | null
+          status?: string
+          total_charges_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          admission_no?: string
+          admission_type?: string
+          admitted_at?: string
+          bed_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          daily_rate_usd?: number
+          diagnosis?: string | null
+          discharge_notes?: string | null
+          discharged_at?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          expected_discharge?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          reason?: string | null
+          room_id?: string | null
+          status?: string
+          total_charges_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount_usd: number
@@ -1250,6 +1322,48 @@ export type Database = {
         }
         Relationships: []
       }
+      rooms: {
+        Row: {
+          active: boolean
+          bed_count: number
+          created_at: string
+          daily_rate_usd: number
+          floor: string | null
+          id: string
+          notes: string | null
+          room_no: string
+          room_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          bed_count?: number
+          created_at?: string
+          daily_rate_usd?: number
+          floor?: string | null
+          id?: string
+          notes?: string | null
+          room_no: string
+          room_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          bed_count?: number
+          created_at?: string
+          daily_rate_usd?: number
+          floor?: string | null
+          id?: string
+          notes?: string | null
+          room_no?: string
+          room_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       service_catalog: {
         Row: {
           active: boolean
@@ -1510,6 +1624,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_admission_no: { Args: never; Returns: string }
       generate_insurance_card_no: {
         Args: { _tier: Database["public"]["Enums"]["insurance_tier"] }
         Returns: string
