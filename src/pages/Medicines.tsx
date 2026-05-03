@@ -13,7 +13,7 @@ import { Plus, Search, Pill, Pencil, Trash2, PackagePlus, History, TrendingUp, A
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
-import { exportToCSV, exportToXLSX, importFromFile } from "@/lib/dataIO";
+import { exportToCSV, exportToExcel, parseImportFile } from "@/lib/dataIO";
 
 type Med = any;
 
