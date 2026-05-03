@@ -339,6 +339,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
 
   type Row = {
     id: string;
+    sale_id: string | null;
     bill_no: string;
     patient: string;
     amount: number;
@@ -346,6 +347,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
     status: "paid" | "pending" | "manual";
     date: string;
   };
+  const [openSaleId, setOpenSaleId] = useState<string | null>(null);
 
   const allRows: Row[] = useMemo(() => {
     if (!methodKey) return [];
@@ -353,6 +355,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
     if (methodKey === "due") {
       sales.filter(s => Number(s.due_usd || 0) > 0).forEach(s => list.push({
         id: s.id,
+        sale_id: s.id,
         bill_no: s.invoice_no || s.id.slice(0, 8),
         patient: s.patient_id ? (patientMap[s.patient_id] || "—") : "Walk-in",
         amount: Number(s.due_usd || 0),
@@ -368,6 +371,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
         const s = saleMap[p.sale_id];
         list.push({
           id: p.id,
+          sale_id: p.sale_id,
           bill_no: s?.invoice_no || p.sale_id.slice(0, 8),
           patient: s?.patient_id ? (patientMap[s.patient_id] || "—") : "Walk-in",
           amount: Number(p.amount_usd || 0),
@@ -380,6 +384,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
         const sign = (m.txn_type === "withdrawal" || m.txn_type === "fee") ? -1 : 1;
         list.push({
           id: m.id,
+          sale_id: null,
           bill_no: m.reference_no || `MAN-${m.id.slice(0, 6)}`,
           patient: m.description || `Manual ${m.txn_type}`,
           amount: sign * Number(m.amount_usd || 0),
@@ -484,8 +489,12 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
               {filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No transactions match your filters.</TableCell></TableRow>
               ) : filtered.map(r => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-primary font-medium text-xs">{r.bill_no}</TableCell>
+                <TableRow
+                  key={r.id}
+                  className={r.sale_id ? "cursor-pointer hover:bg-muted/50" : ""}
+                  onClick={() => r.sale_id && setOpenSaleId(r.sale_id)}
+                >
+                  <TableCell className="text-primary font-medium text-xs underline-offset-2 hover:underline">{r.bill_no}</TableCell>
                   <TableCell>{r.patient}</TableCell>
                   <TableCell className={`text-right font-semibold ${r.amount < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtUSD(r.amount)}</TableCell>
                   <TableCell>{methodBadge(r.method)}</TableCell>
@@ -499,6 +508,129 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
 
         <DialogFooter>
           <Button variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>Export CSV</Button>
+          <Button onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+      <BillDetailsDialog saleId={openSaleId} onClose={() => setOpenSaleId(null)} patientMap={patientMap} />
+    </Dialog>
+  );
+}
+
+function BillDetailsDialog({ saleId, onClose, patientMap }: { saleId: string | null; onClose: () => void; patientMap: Record<string, string> }) {
+  const open = !!saleId;
+  const [sale, setSale] = useState<any>(null);
+  const [items, setItems] = useState<any[]>([]);
+  const [payments, setPayments] = useState<Pay[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!saleId) { setSale(null); setItems([]); setPayments([]); return; }
+    (async () => {
+      setLoading(true);
+      const [{ data: s }, { data: it }, { data: pp }] = await Promise.all([
+        supabase.from("medicine_sales").select("*").eq("id", saleId).maybeSingle(),
+        supabase.from("medicine_sale_items").select("*").eq("sale_id", saleId),
+        supabase.from("invoice_payments" as any).select("*").eq("sale_id", saleId).order("paid_on", { ascending: false }),
+      ]);
+      setSale(s);
+      setItems((it as any) || []);
+      setPayments((pp as any) || []);
+      setLoading(false);
+    })();
+  }, [saleId]);
+
+  const totalPaid = payments.reduce((a, p) => a + Number(p.amount_usd || 0), 0);
+  const total = Number(sale?.total_usd || 0);
+  const due = Math.max(0, total - totalPaid);
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span>🧾 Bill Details</span>
+            {sale && <Badge variant="outline">{sale.invoice_no}</Badge>}
+          </DialogTitle>
+        </DialogHeader>
+
+        {loading || !sale ? (
+          <div className="py-10 text-center text-muted-foreground">Loading…</div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div><div className="text-xs text-muted-foreground">Patient</div><div className="font-medium">{sale.patient_id ? (patientMap[sale.patient_id] || "—") : "Walk-in"}</div></div>
+              <div><div className="text-xs text-muted-foreground">Date</div><div className="font-medium">{(sale.created_at || "").slice(0, 10)}</div></div>
+              <div><div className="text-xs text-muted-foreground">Sale Type</div><div className="font-medium capitalize">{sale.sale_type}</div></div>
+              <div><div className="text-xs text-muted-foreground">Status</div><div className="font-medium capitalize">{sale.status}</div></div>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold mb-2">Items</div>
+              <div className="border rounded-md max-h-56 overflow-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {items.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No items</TableCell></TableRow>
+                    ) : items.map((i: any) => (
+                      <TableRow key={i.id}>
+                        <TableCell>{i.name}</TableCell>
+                        <TableCell className="text-right">{i.quantity}</TableCell>
+                        <TableCell className="text-right">{fmtUSD(Number(i.price_usd))}</TableCell>
+                        <TableCell className="text-right font-medium">{fmtUSD(Number(i.total_usd))}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold mb-2">Payments ({payments.length})</div>
+              <div className="border rounded-md max-h-56 overflow-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {payments.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No payments recorded</TableCell></TableRow>
+                    ) : payments.map(p => (
+                      <TableRow key={p.id}>
+                        <TableCell className="text-xs">{p.paid_on}</TableCell>
+                        <TableCell className="capitalize">{p.payment_method}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{p.reference || "—"}</TableCell>
+                        <TableCell className="text-right font-medium text-emerald-600">{fmtUSD(Number(p.amount_usd))}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t">
+              <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Subtotal</div><div className="font-semibold">{fmtUSD(Number(sale.subtotal_usd || 0))}</div></div>
+              <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Discount</div><div className="font-semibold">-{fmtUSD(Number(sale.discount_usd || 0) + Number(sale.insurance_discount_usd || 0))}</div></div>
+              <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Total</div><div className="font-semibold text-primary">{fmtUSD(total)}</div></div>
+              <div className={`rounded-md border p-3 ${due > 0 ? "bg-rose-50 dark:bg-rose-950/20 border-rose-200" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200"}`}>
+                <div className="text-xs text-muted-foreground">Remaining Due</div>
+                <div className={`font-bold text-lg ${due > 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtUSD(due)}</div>
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground">Total Paid: <span className="font-semibold text-emerald-600">{fmtUSD(totalPaid)}</span></div>
+          </div>
+        )}
+
+        <DialogFooter>
           <Button onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
