@@ -335,15 +335,24 @@ export default function Patients() {
             )}
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
-            <div className="md:col-span-2 flex items-center gap-4">
-              <Avatar className="h-20 w-20 border-2 border-border">
-                <AvatarImage src={photoPreview} />
-                <AvatarFallback className="bg-accent text-accent-foreground">{initials(form.full_name)}</AvatarFallback>
+            <div className="md:col-span-2 flex items-center gap-4 p-4 rounded-lg border bg-muted/30">
+              <Avatar className="h-24 w-24 border-2 border-card shadow-card ring-2 ring-primary/20">
+                <AvatarImage src={photoPreview} className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-white text-lg">{initials(form.full_name)}</AvatarFallback>
               </Avatar>
-              <div>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => onPickPhoto(e.target.files?.[0] ?? null)} />
-                <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Camera className="h-4 w-4 mr-2" />Upload Photo</Button>
-                <p className="text-xs text-muted-foreground mt-1">JPG/PNG, ideally square</p>
+              <div className="flex-1">
+                <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e => onPickPhoto(e.target.files?.[0] ?? null)} />
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                    <Camera className="h-4 w-4 mr-2" />{photoPreview ? "Change Photo" : "Upload Photo"}
+                  </Button>
+                  {photoPreview && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => { setPhotoFile(null); setPhotoPreview(""); setForm({ ...form, photo_url: "" }); if (fileRef.current) fileRef.current.value = ""; }}>
+                      <Trash2 className="h-4 w-4 mr-2" />Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">JPG / PNG / WEBP — square image works best (max 5MB)</p>
               </div>
             </div>
             <div className="space-y-2 md:col-span-2"><Label>Full Name *</Label><Input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} /></div>
