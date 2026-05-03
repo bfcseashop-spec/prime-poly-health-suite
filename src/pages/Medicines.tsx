@@ -61,6 +61,7 @@ export default function Medicines() {
   const [stockForm, setStockForm] = useState({ change_type: "purchase", quantity_change: "", unit: "Pcs", cost_price_usd: "", notes: "" });
   const [optDlg, setOptDlg] = useState(false);
   const [scanInput, setScanInput] = useState("");
+  const [camOpen, setCamOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLInputElement>(null);
