@@ -1454,36 +1454,45 @@ export type Database = {
       shareholder_contributions: {
         Row: {
           amount_usd: number
+          category: string | null
           created_at: string
           created_by: string | null
           id: string
+          investment_name: string | null
           notes: string | null
           paid_on: string
           payment_method: string
           reference: string | null
           shareholder_id: string
+          slip_url: string | null
         }
         Insert: {
           amount_usd?: number
+          category?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          investment_name?: string | null
           notes?: string | null
           paid_on?: string
           payment_method?: string
           reference?: string | null
           shareholder_id: string
+          slip_url?: string | null
         }
         Update: {
           amount_usd?: number
+          category?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          investment_name?: string | null
           notes?: string | null
           paid_on?: string
           payment_method?: string
           reference?: string | null
           shareholder_id?: string
+          slip_url?: string | null
         }
         Relationships: []
       }
