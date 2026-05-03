@@ -287,11 +287,12 @@ export default function POS() {
     const inv = {
       invoice, items: cart, subtotal, discount: totalDiscount, total, paid, due: remaining, status,
       splits: validSplits, patient: patients.find(p => p.id === patientId), notes,
+      referrer,
       created_at: new Date(),
     };
     setLastInvoice(inv);
     setPreviewOpen(true);
-    setCart([]); setDiscountType("none"); setDiscountValue(0); setPatientId(undefined); setInsuranceCard(null); setNotes("");
+    setCart([]); setDiscountType("none"); setDiscountValue(0); setPatientId(undefined); setInsuranceCard(null); setNotes(""); setReferrer("");
     setSplits([{ id: crypto.randomUUID(), method: "cash", amount: 0 }]); setSplitMode(false); setAutoMethod("cash");
     load();
   };
