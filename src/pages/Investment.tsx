@@ -1306,32 +1306,68 @@ export default function Investment() {
             <div className="space-y-3">
               <Label className="text-sm font-semibold">Add new investor</Label>
               <div className="rounded-xl border-2 border-dashed bg-muted/20 p-3 space-y-2">
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    placeholder="Name *"
-                    className="h-10 border-2 bg-background flex-1"
-                    value={quickInv.full_name}
-                    onChange={e => setQuickInv({ ...quickInv, full_name: e.target.value })}
-                  />
-                  <Input
-                    placeholder="Email"
-                    className="h-10 border-2 bg-background flex-1"
-                    value={quickInv.email}
-                    onChange={e => setQuickInv({ ...quickInv, email: e.target.value })}
-                  />
-                  <Input
-                    placeholder="Phone"
-                    className="h-10 border-2 bg-background flex-1"
-                    value={quickInv.phone}
-                    onChange={e => setQuickInv({ ...quickInv, phone: e.target.value })}
-                  />
-                  <Button
-                    onClick={addQuickInvestor}
-                    disabled={quickInvSaving}
-                    className="h-10 px-6 clinic-gradient text-primary-foreground font-semibold shrink-0"
+                <input
+                  ref={quickPhotoRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={e => e.target.files?.[0] && handleQuickPhoto(e.target.files[0])}
+                />
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => quickPhotoRef.current?.click()}
+                    disabled={quickPhotoUploading}
+                    className="relative h-14 w-14 shrink-0 rounded-full overflow-hidden border-2 border-dashed bg-background hover:border-primary hover:bg-primary/5 transition group"
+                    title="Upload photo"
                   >
-                    {quickInvSaving ? "Adding..." : "Add"}
-                  </Button>
+                    {quickInv.photo_url ? (
+                      <>
+                        <img src={quickInv.photo_url} alt="" className="h-full w-full object-cover" />
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition">
+                          <Upload className="h-4 w-4 text-white" />
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex flex-col items-center justify-center h-full w-full text-muted-foreground">
+                        {quickPhotoUploading ? (
+                          <span className="text-[10px]">...</span>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            <span className="text-[9px] mt-0.5">Photo</span>
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </button>
+                  <div className="flex-1 flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Name *"
+                      className="h-10 border-2 bg-background flex-1"
+                      value={quickInv.full_name}
+                      onChange={e => setQuickInv({ ...quickInv, full_name: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Email"
+                      className="h-10 border-2 bg-background flex-1"
+                      value={quickInv.email}
+                      onChange={e => setQuickInv({ ...quickInv, email: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Phone"
+                      className="h-10 border-2 bg-background flex-1"
+                      value={quickInv.phone}
+                      onChange={e => setQuickInv({ ...quickInv, phone: e.target.value })}
+                    />
+                    <Button
+                      onClick={addQuickInvestor}
+                      disabled={quickInvSaving}
+                      className="h-10 px-6 clinic-gradient text-primary-foreground font-semibold shrink-0"
+                    >
+                      {quickInvSaving ? "Adding..." : "Add"}
+                    </Button>
+                  </div>
                 </div>
                 <Input
                   placeholder="Notes"
