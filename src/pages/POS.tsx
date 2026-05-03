@@ -78,19 +78,21 @@ export default function POS() {
   const [lastInvoice, setLastInvoice] = useState<any>(null);
 
   const load = async () => {
-    const [m, s, p, inj, pkg, pkgI] = await Promise.all([
+    const [m, s, p, inj, pkg, pkgI, doc] = await Promise.all([
       supabase.from("medicines").select("*").order("name"),
       supabase.from("service_catalog" as any).select("*").eq("active", true).order("name"),
       supabase.from("patients").select("id, full_name, patient_code, gender").order("created_at", { ascending: false }).limit(200),
       supabase.from("injections" as any).select("*").eq("active", true).order("name"),
       supabase.from("health_packages" as any).select("*").eq("active", true).order("name"),
       supabase.from("health_package_items" as any).select("*"),
+      supabase.from("doctors" as any).select("id, full_name, specialization").eq("status", "active").order("full_name"),
     ]);
     setMeds(m.data ?? []);
     setServices((s.data as any[]) ?? []);
     setPatients(p.data ?? []);
     setInjections((inj.data as any[]) ?? []);
     setPackages((pkg.data as any[]) ?? []);
+    setDoctors((doc.data as any[]) ?? []);
     const grouped: Record<string, any[]> = {};
     ((pkgI.data as any[]) ?? []).forEach((it: any) => {
       grouped[it.package_id] = grouped[it.package_id] || [];
