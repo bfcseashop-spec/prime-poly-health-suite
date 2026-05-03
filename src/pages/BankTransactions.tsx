@@ -339,6 +339,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
 
   type Row = {
     id: string;
+    sale_id: string | null;
     bill_no: string;
     patient: string;
     amount: number;
@@ -346,6 +347,7 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
     status: "paid" | "pending" | "manual";
     date: string;
   };
+  const [openSaleId, setOpenSaleId] = useState<string | null>(null);
 
   const allRows: Row[] = useMemo(() => {
     if (!methodKey) return [];
