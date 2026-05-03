@@ -489,8 +489,12 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, pat
               {filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No transactions match your filters.</TableCell></TableRow>
               ) : filtered.map(r => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-primary font-medium text-xs">{r.bill_no}</TableCell>
+                <TableRow
+                  key={r.id}
+                  className={r.sale_id ? "cursor-pointer hover:bg-muted/50" : ""}
+                  onClick={() => r.sale_id && setOpenSaleId(r.sale_id)}
+                >
+                  <TableCell className="text-primary font-medium text-xs underline-offset-2 hover:underline">{r.bill_no}</TableCell>
                   <TableCell>{r.patient}</TableCell>
                   <TableCell className={`text-right font-semibold ${r.amount < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtUSD(r.amount)}</TableCell>
                   <TableCell>{methodBadge(r.method)}</TableCell>
