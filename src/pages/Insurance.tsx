@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, Search, ShieldCheck, CalendarIcon, CreditCard, LayoutGrid, List, Crown, Gem, Star, Shield } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ShieldCheck, CalendarIcon, CreditCard, LayoutGrid, List, Crown, Gem, Star, Shield, Printer, Eye, ScanBarcode } from "lucide-react";
+import { InsuranceCardPreview, printCard, type CardData } from "@/components/insurance/InsuranceCardPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fmtUSD } from "@/lib/currency";
@@ -89,6 +90,9 @@ export default function Insurance() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [patientPickerOpen, setPatientPickerOpen] = useState(false);
+  const [previewCard, setPreviewCard] = useState<Row | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanInput, setScanInput] = useState("");
 
   const blank = {
     patient_id: null as string | null,
