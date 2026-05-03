@@ -104,7 +104,7 @@ export default function Staff() {
   const openEdit = (r: any) => {
     setForm({
       id: r.id, full_name: r.full_name ?? "", age: r.age ?? "", gender: r.gender ?? "",
-      position: r.position ?? "doctor", department: r.department ?? "",
+      position: r.position ?? "nurse", department: r.department ?? "",
       phone: r.phone ?? "", email: r.email ?? "", address: r.address ?? "",
       joining_date: r.joining_date ?? "", monthly_salary_usd: r.monthly_salary_usd ?? "",
       status: r.status ?? "active", qualification: r.qualification ?? "",
