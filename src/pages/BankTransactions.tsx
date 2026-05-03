@@ -7,6 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Download, CreditCard, DollarSign, TrendingUp } from "lucide-react";
 import { fmtUSD, fmtKHR } from "@/lib/currency";
 import { toast } from "sonner";
@@ -65,6 +68,7 @@ export default function BankTransactions() {
   const [manuals, setManuals] = useState<Manual[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [historyKey, setHistoryKey] = useState<string | null>(null);
   const [form, setForm] = useState({ txn_date: new Date().toISOString().slice(0, 10), txn_type: "deposit", bank_name: "Cash", amount_usd: "", reference_no: "", description: "" });
 
   const load = async () => {
@@ -262,23 +266,160 @@ export default function BankTransactions() {
               {cards.map(c => {
                 const col = palette[colorKey(c.key)];
                 return (
-                  <Card key={c.key} className={`border-2 ${col.border} ${col.bg}`}>
-                    <CardContent className="p-4">
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setHistoryKey(c.key)}
+                    className={`text-left rounded-lg border-2 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] ${col.border} ${col.bg}`}
+                  >
+                    <div className="p-4">
                       <div className="flex items-start justify-between">
                         <span className="text-xs font-medium px-2 py-0.5 rounded border bg-background/60">{prettyMethod(c.key)}</span>
                         <CreditCard className={`h-4 w-4 ${col.text}`} />
                       </div>
                       <div className={`text-2xl font-bold mt-3 ${col.text}`}>{fmtUSD(c.amount)}</div>
                       <div className="text-xs text-muted-foreground mt-1">{fmtKHR(c.amount)}</div>
-                      <div className="text-xs text-muted-foreground mt-2">{c.count} transaction{c.count === 1 ? "" : "s"}</div>
-                    </CardContent>
-                  </Card>
+                      <div className="text-xs text-muted-foreground mt-2 flex items-center justify-between">
+                        <span>{c.count} transaction{c.count === 1 ? "" : "s"}</span>
+                        <span className="text-[10px] uppercase tracking-wide opacity-70">View history →</span>
+                      </div>
+                    </div>
+                  </button>
                 );
               })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <HistoryDialog
+        methodKey={historyKey}
+        onClose={() => setHistoryKey(null)}
+        from={from}
+        to={to}
+        pays={filteredPays}
+        sales={filteredSales}
+        manuals={filteredManuals}
+      />
     </div>
+  );
+}
+
+function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals }: {
+  methodKey: string | null;
+  onClose: () => void;
+  from: string;
+  to: string;
+  pays: Pay[];
+  sales: { id: string; due_usd: number; created_at: string; payment_method?: string }[];
+  manuals: Manual[];
+}) {
+  const open = !!methodKey;
+  type Row = { date: string; method: string; amount: number; reference: string | null; source: string; note?: string | null };
+  const rows: Row[] = useMemo(() => {
+    if (!methodKey) return [];
+    const list: Row[] = [];
+    if (methodKey === "due") {
+      sales.filter(s => Number(s.due_usd || 0) > 0).forEach(s => list.push({
+        date: (s.created_at || "").slice(0, 10),
+        method: "due",
+        amount: Number(s.due_usd || 0),
+        reference: s.id.slice(0, 8),
+        source: "Sale outstanding",
+      }));
+    } else {
+      pays.filter(p => (p.payment_method || "cash").toLowerCase().replace(/\s+/g, "_") === methodKey).forEach(p => list.push({
+        date: p.paid_on,
+        method: p.payment_method,
+        amount: Number(p.amount_usd || 0),
+        reference: p.reference,
+        source: "Invoice payment",
+      }));
+      manuals.filter(m => (m.bank_name || "").toLowerCase().replace(/\s+/g, "_") === methodKey).forEach(m => list.push({
+        date: m.txn_date,
+        method: m.bank_name,
+        amount: ((m.txn_type === "withdrawal" || m.txn_type === "fee") ? -1 : 1) * Number(m.amount_usd || 0),
+        reference: m.reference_no,
+        source: `Manual ${m.txn_type}`,
+        note: m.description,
+      }));
+    }
+    return list.sort((a, b) => b.date.localeCompare(a.date));
+  }, [methodKey, pays, sales, manuals]);
+
+  const grouped = useMemo(() => {
+    const m: Record<string, Row[]> = {};
+    rows.forEach(r => { (m[r.date] ||= []).push(r); });
+    return Object.entries(m).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [rows]);
+
+  const total = rows.reduce((a, r) => a + r.amount, 0);
+
+  const exportCSV = () => {
+    const out = [["Date", "Method", "Amount USD", "Reference", "Source", "Note"]];
+    rows.forEach(r => out.push([r.date, r.method, String(r.amount), r.reference || "", r.source, r.note || ""]));
+    const csv = out.map(r => r.map(c => `"${(c ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `${methodKey}-history-${from}_to_${to}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const prettyMethod = (m: string) => m.split(/[\s_]+/).map(w => w[0]?.toUpperCase() + w.slice(1)).join(" ");
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between gap-3">
+            <span>{methodKey ? prettyMethod(methodKey) : ""} — Transaction History</span>
+            <Badge variant="outline">{from} → {to}</Badge>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center justify-between text-sm">
+          <div className="text-muted-foreground">{rows.length} transaction{rows.length === 1 ? "" : "s"}</div>
+          <div className="font-semibold">Total: <span className="text-primary">{fmtUSD(total)}</span></div>
+        </div>
+        <ScrollArea className="h-[60vh] border rounded-md">
+          {grouped.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">No transactions for this method in the selected range.</div>
+          ) : grouped.map(([date, items]) => {
+            const sub = items.reduce((a, r) => a + r.amount, 0);
+            return (
+              <div key={date} className="border-b last:border-b-0">
+                <div className="flex items-center justify-between px-4 py-2 bg-muted/40 sticky top-0">
+                  <div className="font-medium text-sm">{date}</div>
+                  <div className="text-sm font-semibold">{fmtUSD(sub)} <span className="text-xs text-muted-foreground font-normal">({items.length})</span></div>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-32">Source</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Note</TableHead>
+                      <TableHead className="text-right w-32">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((r, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs">{r.source}</TableCell>
+                        <TableCell className="text-xs">{r.reference || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[260px] truncate">{r.note || "—"}</TableCell>
+                        <TableCell className={`text-right font-semibold ${r.amount < 0 ? "text-red-600" : ""}`}>{fmtUSD(r.amount)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })}
+        </ScrollArea>
+        <DialogFooter>
+          <Button variant="outline" onClick={exportCSV} disabled={rows.length === 0}>Export CSV</Button>
+          <Button onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
