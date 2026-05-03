@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 
 const POSITIONS = [
-  { value: "doctor", label: "Doctor", icon: Stethoscope, color: "bg-violet-50 text-violet-700 border-violet-200" },
   { value: "lab_technician", label: "Lab Technologist", icon: FlaskConical, color: "bg-slate-100 text-slate-700 border-slate-200" },
   { value: "nurse", label: "Nurse", icon: Users, color: "bg-pink-50 text-pink-700 border-pink-200" },
   { value: "pharmacist", label: "Pharmacist", icon: Briefcase, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
