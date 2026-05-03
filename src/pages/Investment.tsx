@@ -281,6 +281,69 @@ export default function Investment() {
   };
 
   // ===== Contribution CRUD =====
+  const [recOpen, setRecOpen] = useState(false);
+  const [recForm, setRecForm] = useState({
+    investment_name: "Capital Amount Investment",
+    shareholder_id: "",
+    category: "",
+    amount_usd: "" as any,
+    paid_on: format(new Date(), "yyyy-MM-dd"),
+    notes: "",
+    images: [] as string[],
+  });
+  const [recImgUploading, setRecImgUploading] = useState(false);
+  const recImgRef = useRef<HTMLInputElement>(null);
+
+  const openRecord = (shareholderId?: string, investmentName?: string) => {
+    setRecForm({
+      investment_name: investmentName || "Capital Amount Investment",
+      shareholder_id: shareholderId || "",
+      category: "",
+      amount_usd: "",
+      paid_on: format(new Date(), "yyyy-MM-dd"),
+      notes: "",
+      images: [],
+    });
+    setRecOpen(true);
+  };
+
+  const handleRecImage = async (file: File) => {
+    setRecImgUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("investment-slips").upload(path, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from("investment-slips").getPublicUrl(path);
+      setRecForm(f => ({ ...f, images: [...f.images, data.publicUrl] }));
+      toast.success("Image uploaded");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setRecImgUploading(false); }
+  };
+
+  const submitRecord = async () => {
+    if (!recForm.shareholder_id) return toast.error("Select investor");
+    if (!recForm.category) return toast.error("Select category");
+    const amt = Number(recForm.amount_usd);
+    if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    const { data: u } = await supabase.auth.getUser();
+    const payload: any = {
+      shareholder_id: recForm.shareholder_id,
+      investment_name: recForm.investment_name || "Capital Amount Investment",
+      category: recForm.category,
+      amount_usd: amt,
+      paid_on: recForm.paid_on,
+      payment_method: "cash",
+      notes: recForm.notes || null,
+      slip_url: recForm.images.join("\n") || null,
+      created_by: u.user?.id ?? null,
+    };
+    const { error } = await (supabase.from("shareholder_contributions" as any) as any).insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success("Contribution recorded");
+    setRecOpen(false); load();
+  };
+
   const openNewC = (shareholderId?: string) => {
     setCForm({
       ...emptyContribution,
