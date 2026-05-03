@@ -728,37 +728,63 @@ export default function Investment() {
               />
             </div>
 
-            {/* Capital Amount */}
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">
-                Capital Amount ($) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="Enter capital amount"
-                className="h-11 bg-background border-2 focus-visible:border-primary"
-                value={shForm.committed_capital_usd}
-                onChange={e => setShForm({ ...shForm, committed_capital_usd: e.target.value })}
-              />
-            </div>
+            {(() => {
+              const selectedInv = shForm.notes?.startsWith("Investment:")
+                ? shForm.notes.replace(/^Investment:\s*/, "")
+                : "Capital Amount Investment";
+              const investmentTotal = contributions
+                .filter((c: any) => (c.investment_name || "Capital Amount Investment") === selectedInv)
+                .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
+              const baseTotal = investmentTotal > 0
+                ? investmentTotal
+                : shareholders
+                    .filter((s: any) => s.id !== shForm.id)
+                    .reduce((sum: number, s: any) => sum + Number(s.committed_capital_usd || 0), 0);
+              return (
+                <>
+                  {/* Share Percentage (drives capital) */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">
+                      Share Percentage (%) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      placeholder="e.g. 25"
+                      className="h-11 bg-background border-2 focus-visible:border-primary"
+                      value={shForm.share_percent}
+                      onChange={e => {
+                        const pct = e.target.value;
+                        const n = Number(pct);
+                        const auto = baseTotal > 0 && !isNaN(n) && n > 0
+                          ? +((baseTotal * n) / 100).toFixed(2)
+                          : "";
+                        setShForm({ ...shForm, share_percent: pct, committed_capital_usd: auto as any });
+                      }}
+                    />
+                  </div>
 
-            {/* Share Percentage */}
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">
-                Share Percentage (%) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                className="h-11 bg-background border-2 focus-visible:border-primary"
-                value={shForm.share_percent}
-                onChange={e => setShForm({ ...shForm, share_percent: e.target.value })}
-              />
-            </div>
+                  {/* Capital Amount (auto from %) */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium flex items-center justify-between">
+                      <span>Capital Amount ($)</span>
+                      <span className="text-[11px] font-normal text-muted-foreground">
+                        Auto from share % · base {fmtUSD(baseTotal)}
+                      </span>
+                    </Label>
+                    <Input
+                      type="number"
+                      readOnly
+                      placeholder="Auto-calculated from share %"
+                      className="h-11 bg-muted/40 border-2 cursor-not-allowed"
+                      value={shForm.committed_capital_usd}
+                    />
+                  </div>
+                </>
+              );
+            })()}
 
             <Button
               onClick={submitSh}
