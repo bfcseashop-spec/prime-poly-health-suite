@@ -1398,15 +1398,32 @@ export default function Investment() {
                         key={s.id}
                         className="group flex items-center gap-3 rounded-xl border bg-card hover:bg-muted/40 hover:shadow-sm transition px-3 py-2.5"
                       >
-                        <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background shadow-sm">
-                          <AvatarImage src={s.photo_url || undefined} />
-                          <AvatarFallback
-                            className="text-primary-foreground text-sm font-semibold"
-                            style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}
-                          >
-                            {s.full_name?.[0]?.toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <button
+                          type="button"
+                          onClick={() => investorPhotoRefs.current[s.id]?.click()}
+                          className="relative shrink-0 rounded-full group"
+                          title="Change photo"
+                        >
+                          <input
+                            ref={el => { investorPhotoRefs.current[s.id] = el; }}
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={e => e.target.files?.[0] && handleInvestorPhotoChange(s.id, e.target.files[0])}
+                          />
+                          <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
+                            <AvatarImage src={s.photo_url || undefined} />
+                            <AvatarFallback
+                              className="text-primary-foreground text-sm font-semibold"
+                              style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}
+                            >
+                              {s.full_name?.[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition">
+                            <Upload className="h-3.5 w-3.5 text-white" />
+                          </span>
+                        </button>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{s.full_name}</p>
                           <p className="text-[11px] text-muted-foreground truncate">
