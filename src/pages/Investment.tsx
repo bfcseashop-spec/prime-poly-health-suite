@@ -654,29 +654,119 @@ export default function Investment() {
 
       {/* SHAREHOLDER ADD/EDIT */}
       <Dialog open={shOpen} onOpenChange={setShOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>{shForm.id ? "Edit Shareholder" : "Add Capital / Shareholder"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 md:grid-cols-2 py-2">
-            <div className="space-y-2 md:col-span-2"><Label>Full Name *</Label><Input value={shForm.full_name} onChange={e => setShForm({ ...shForm, full_name: e.target.value })} /></div>
-            <div className="space-y-2 md:col-span-2"><Label>Photo URL</Label><Input value={shForm.photo_url} onChange={e => setShForm({ ...shForm, photo_url: e.target.value })} placeholder="https://..." /></div>
-            <div className="space-y-2"><Label>Phone</Label><Input value={shForm.phone} onChange={e => setShForm({ ...shForm, phone: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Email</Label><Input type="email" value={shForm.email} onChange={e => setShForm({ ...shForm, email: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Share % *</Label><Input type="number" min={0} max={100} step="0.01" value={shForm.share_percent} onChange={e => setShForm({ ...shForm, share_percent: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Capital Amount (USD) *</Label><Input type="number" min={0} step="0.01" value={shForm.committed_capital_usd} onChange={e => setShForm({ ...shForm, committed_capital_usd: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Joined On</Label><Input type="date" value={shForm.joined_on} onChange={e => setShForm({ ...shForm, joined_on: e.target.value })} /></div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={shForm.active ? "active" : "inactive"} onValueChange={v => setShForm({ ...shForm, active: v === "active" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 pt-5 pb-4 border-b bg-muted/30">
+            <DialogHeader className="space-y-0">
+              <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+                <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-primary/10 text-primary">
+                  <Plus className="h-4 w-4" />
+                </span>
+                {shForm.id ? "Edit Capital" : "Add Capital"}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-5 space-y-4 bg-background">
+            {/* Investment selector */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">
+                Investment <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={shForm.notes?.startsWith("Investment:") ? shForm.notes.replace(/^Investment:\s*/, "") : "Capital Amount Investment"}
+                onValueChange={v => setShForm({ ...shForm, notes: `Investment: ${v}` })}
+              >
+                <SelectTrigger className="h-11 bg-background border-2 focus:border-primary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from(new Set([
+                    "Capital Amount Investment",
+                    ...contributions.map((c: any) => c.investment_name).filter(Boolean),
+                  ])).map(inv => {
+                    const total = contributions
+                      .filter((c: any) => (c.investment_name || "Capital Amount Investment") === inv)
+                      .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
+                    return (
+                      <SelectItem key={inv} value={inv}>
+                        {inv} ({fmtUSD(total)})
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 md:col-span-2"><Label>Notes</Label><Textarea rows={2} value={shForm.notes} onChange={e => setShForm({ ...shForm, notes: e.target.value })} /></div>
+
+            {/* Investor Name */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">
+                Investor Name <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={shareholders.find(s => s.full_name === shForm.full_name) ? shForm.full_name : ""}
+                onValueChange={v => setShForm({ ...shForm, full_name: v })}
+              >
+                <SelectTrigger className="h-11 bg-background border-2 focus:border-primary">
+                  <SelectValue placeholder="Type name..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {shareholders.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No existing investors</div>
+                  )}
+                  {shareholders.map(s => (
+                    <SelectItem key={s.id} value={s.full_name}>{s.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Enter investor name"
+                className="h-11 bg-background border-2 focus-visible:border-primary"
+                value={shForm.full_name}
+                onChange={e => setShForm({ ...shForm, full_name: e.target.value })}
+              />
+            </div>
+
+            {/* Capital Amount */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">
+                Capital Amount ($) <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Enter capital amount"
+                className="h-11 bg-background border-2 focus-visible:border-primary"
+                value={shForm.committed_capital_usd}
+                onChange={e => setShForm({ ...shForm, committed_capital_usd: e.target.value })}
+              />
+            </div>
+
+            {/* Share Percentage */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">
+                Share Percentage (%) <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                className="h-11 bg-background border-2 focus-visible:border-primary"
+                value={shForm.share_percent}
+                onChange={e => setShForm({ ...shForm, share_percent: e.target.value })}
+              />
+            </div>
+
+            <Button
+              onClick={submitSh}
+              className="w-full h-11 clinic-gradient text-primary-foreground font-semibold text-base shadow-md"
+            >
+              {shForm.id ? "Save Changes" : "Add Capital"}
+            </Button>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShOpen(false)}>Cancel</Button>
-            <Button onClick={submitSh} className="clinic-gradient text-primary-foreground">{shForm.id ? "Save" : "Add"}</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
