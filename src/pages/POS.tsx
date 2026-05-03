@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Trash2, Receipt, Pill, Stethoscope, ScanLine, FlaskConical, Activity, ScanBarcode, X, Plus, CreditCard, Wallet, Banknote, Clock } from "lucide-react";
+import { Search, Trash2, Receipt, Pill, Stethoscope, ScanLine, FlaskConical, Activity, ScanBarcode, X, Plus, CreditCard, Wallet, Banknote, Clock, Syringe, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { fmtUSD, fmtBoth } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
