@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Pill, Pencil, Trash2, PackagePlus, History, TrendingUp, AlertTriangle, Boxes, Upload, Download, ScanBarcode, Settings2 } from "lucide-react";
+import { Plus, Search, Pill, Pencil, Trash2, PackagePlus, History, TrendingUp, AlertTriangle, Boxes, Upload, Download, ScanBarcode, Settings2, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,23 +21,38 @@ const empty = {
   name: "", generic_name: "", brand: "", category: "", supplier: "", barcode: "",
   box_barcode: "", packet_barcode: "", strip_barcode: "",
   unit: "Pcs",
-  purchase_unit: "Pcs", // Pcs | Strip | Packet | Box
+  purchase_unit: "Pcs",
   units_per_box: "", units_per_packet: "", units_per_strip: "",
-  purchase_pack_price: "", // price for the selected purchase pack
+  purchase_pack_price: "",
   cost_price_usd: "", price_usd: "",
   box_cost_usd: "", packet_cost_usd: "", strip_cost_usd: "",
   box_price_usd: "", packet_price_usd: "", strip_price_usd: "",
   stock: "0", low_stock_threshold: "10", expiry_date: "",
+  image_url: "",
 };
+
+function OptionList({ title, table, items, onChange }: { title: string; table: string; items: any[]; onChange: () => void }) {
+  const [name, setName] = useState("");
+  const add = async () => { if (!name.trim()) return; const { error } = await supabase.from(table as any).insert({ name: name.trim() }); if (error) return toast.error(error.message); setName(""); onChange(); };
+  const del = async (id: string) => { await supabase.from(table as any).delete().eq("id", id); onChange(); };
+  return (
+    <div>
+      <h4 className="font-semibold text-sm mb-2">{title}</h4>
+      <div className="flex gap-2 mb-2"><Input value={name} onChange={e => setName(e.target.value)} placeholder={`New ${title.slice(0, -1)}`} onKeyDown={e => e.key === "Enter" && add()} /><Button size="sm" onClick={add}>Add</Button></div>
+      <div className="space-y-1 max-h-64 overflow-y-auto">{items.map(it => (<div key={it.id} className="flex justify-between items-center bg-muted/40 rounded px-2 py-1 text-sm"><span>{it.name}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => del(it.id)}><X className="h-3 w-3" /></Button></div>))}</div>
+    </div>
+  );
+}
 
 export default function Medicines() {
   const { user } = useAuth();
   const [meds, setMeds] = useState<Med[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [soldMap, setSoldMap] = useState<Record<string, number>>({});
   const [units, setUnits] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "low" | "expired">("all");
+  const [filter, setFilter] = useState<"all" | "low" | "expired" | "out">("all");
   const [dlg, setDlg] = useState(false);
   const [editing, setEditing] = useState<Med | null>(null);
   const [form, setForm] = useState<any>(empty);
@@ -45,17 +60,23 @@ export default function Medicines() {
   const [stockForm, setStockForm] = useState({ change_type: "purchase", quantity_change: "", cost_price_usd: "", notes: "" });
   const [optDlg, setOptDlg] = useState(false);
   const [scanInput, setScanInput] = useState("");
+  const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLInputElement>(null);
   const scanRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
-    const [m, h, u, c] = await Promise.all([
+    const [m, h, sales, u, c] = await Promise.all([
       supabase.from("medicines").select("*").order("name"),
-      supabase.from("medicine_stock_history" as any).select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("medicine_stock_history" as any).select("*").order("created_at", { ascending: false }).limit(300),
+      supabase.from("medicine_stock_history" as any).select("medicine_id, quantity_change, change_type"),
       supabase.from("medicine_units" as any).select("*").order("name"),
       supabase.from("medicine_categories" as any).select("*").order("name"),
     ]);
     setMeds(m.data ?? []); setHistory((h.data as any) ?? []);
+    const sm: Record<string, number> = {};
+    ((sales.data as any[]) ?? []).forEach(r => { if (r.change_type === "sale") sm[r.medicine_id] = (sm[r.medicine_id] ?? 0) + Math.abs(Number(r.quantity_change || 0)); });
+    setSoldMap(sm);
     setUnits((u.data as any) ?? []); setCats((c.data as any) ?? []);
   };
   useEffect(() => { load(); }, []);
@@ -64,16 +85,19 @@ export default function Medicines() {
     const ql = q.toLowerCase();
     const matchQ = !q || [m.name, m.brand, m.generic_name, m.category, m.supplier].some((x: string) => x?.toLowerCase().includes(ql)) ||
       [m.barcode, m.box_barcode, m.packet_barcode, m.strip_barcode].includes(q);
-    const isLow = m.stock <= m.low_stock_threshold;
+    const isLow = m.stock > 0 && m.stock <= m.low_stock_threshold;
+    const isOut = Number(m.stock) === 0;
     const isExp = m.expiry_date && new Date(m.expiry_date) < new Date();
     if (filter === "low" && !isLow) return false;
+    if (filter === "out" && !isOut) return false;
     if (filter === "expired" && !isExp) return false;
     return matchQ;
   }), [meds, q, filter]);
 
   const stats = useMemo(() => ({
     total: meds.length,
-    low: meds.filter(m => m.stock <= m.low_stock_threshold).length,
+    low: meds.filter(m => m.stock > 0 && m.stock <= m.low_stock_threshold).length,
+    out: meds.filter(m => Number(m.stock) === 0).length,
     expired: meds.filter(m => m.expiry_date && new Date(m.expiry_date) < new Date()).length,
     value: meds.reduce((s, m) => s + Number(m.cost_price_usd ?? 0) * Number(m.stock ?? 0), 0),
   }), [meds]);
@@ -85,7 +109,6 @@ export default function Medicines() {
     setDlg(true);
   };
 
-  // Auto price calculator: change higher pack price -> per-piece auto
   const updatePack = (field: string, value: string, perUnits: number | string, kind: "cost" | "price") => {
     const v = Number(value || 0);
     const u = Number(perUnits || 0);
@@ -97,29 +120,19 @@ export default function Medicines() {
     }
     setForm(next);
   };
-  // Reverse: change per-unit -> recompute pack prices if units defined
-  const updatePerUnit = (field: "cost_price_usd" | "price_usd", value: string) => {
-    const v = Number(value || 0);
-    const next: any = { ...form, [field]: value };
-    if (v) {
-      const map: Record<string, [string, string]> = {
-        units_per_box: field === "price_usd" ? ["box_price_usd", "price"] as any : ["box_cost_usd", "cost"] as any,
-      };
-      const apply = (uField: string, target: string) => {
-        const u = Number(form[uField] || 0);
-        if (u) next[target] = (v * u).toFixed(2);
-      };
-      if (field === "price_usd") {
-        apply("units_per_box", "box_price_usd");
-        apply("units_per_packet", "packet_price_usd");
-        apply("units_per_strip", "strip_price_usd");
-      } else {
-        apply("units_per_box", "box_cost_usd");
-        apply("units_per_packet", "packet_cost_usd");
-        apply("units_per_strip", "strip_cost_usd");
-      }
-    }
-    setForm(next);
+
+  const uploadImage = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user?.id ?? "anon"}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("medicine-images").upload(path, file, { upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from("medicine-images").getPublicUrl(path);
+      setForm((f: any) => ({ ...f, image_url: data.publicUrl }));
+      toast.success("Image uploaded");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setUploading(false); }
   };
 
   const save = async () => {
@@ -137,10 +150,20 @@ export default function Medicines() {
       box_price_usd: num(form.box_price_usd), packet_price_usd: num(form.packet_price_usd), strip_price_usd: num(form.strip_price_usd),
       stock: Number(form.stock || 0), low_stock_threshold: Number(form.low_stock_threshold || 10),
       expiry_date: form.expiry_date || null,
+      image_url: form.image_url || null,
     };
     if (editing) {
+      const before = Number(editing.stock || 0);
+      const after = Number(payload.stock || 0);
       const { error } = await supabase.from("medicines").update(payload).eq("id", editing.id);
       if (error) return toast.error(error.message);
+      if (before !== after) {
+        await supabase.from("medicine_stock_history" as any).insert({
+          medicine_id: editing.id, change_type: "adjustment", quantity_change: after - before,
+          stock_before: before, stock_after: after, cost_price_usd: payload.cost_price_usd, created_by: user?.id,
+          notes: "Stock adjusted via Edit",
+        });
+      }
       toast.success("Updated");
     } else {
       const { data, error } = await supabase.from("medicines").insert(payload).select().single();
@@ -183,12 +206,10 @@ export default function Medicines() {
     toast.success("Stock updated"); setStockDlg(null); load();
   };
 
-  // Barcode scan: any barcode (single/strip/packet/box) -> add stock by that pack size
   const handleScan = async (code: string) => {
     if (!code) return;
     const m = meds.find(x => [x.barcode, x.strip_barcode, x.packet_barcode, x.box_barcode].includes(code));
     if (!m) {
-      // Unknown barcode -> open Add dialog with barcode pre-filled
       setEditing(null); setForm({ ...empty, barcode: code }); setDlg(true);
       toast.info("New barcode — fill medicine details");
       return;
@@ -221,21 +242,13 @@ export default function Medicines() {
         unit: r.unit || "Pcs",
         units_per_box: r.units_per_box || null, units_per_packet: r.units_per_packet || null, units_per_strip: r.units_per_strip || null,
         cost_price_usd: Number(r.cost_price_usd || 0), price_usd: Number(r.price_usd || 0),
-        box_cost_usd: r.box_cost_usd || null, packet_cost_usd: r.packet_cost_usd || null, strip_cost_usd: r.strip_cost_usd || null,
-        box_price_usd: r.box_price_usd || null, packet_price_usd: r.packet_price_usd || null, strip_price_usd: r.strip_price_usd || null,
         stock: Number(r.stock || 0), low_stock_threshold: Number(r.low_stock_threshold || 10),
-        expiry_date: r.expiry_date || null,
+        expiry_date: r.expiry_date || null, image_url: r.image_url || null,
       })).filter(r => r.name);
       const { error } = await supabase.from("medicines").insert(cleaned);
       if (error) return toast.error(error.message);
       toast.success(`Imported ${cleaned.length} medicines`); load();
     } catch (e: any) { toast.error(e.message); }
-  };
-
-  const margin = (m: Med) => {
-    const c = Number(m.cost_price_usd || 0), s = Number(m.price_usd || 0);
-    if (!c || !s) return null;
-    return (((s - c) / c) * 100).toFixed(0);
   };
 
   return (
@@ -255,7 +268,6 @@ export default function Medicines() {
         </div>
       </div>
 
-      {/* Quick scan bar */}
       <Card className="shadow-soft border-primary/30">
         <CardContent className="p-3 flex items-center gap-3">
           <ScanBarcode className="h-5 w-5 text-primary" />
@@ -271,9 +283,10 @@ export default function Medicines() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="shadow-soft"><CardContent className="p-4 flex items-center gap-3"><Boxes className="h-8 w-8 text-primary" /><div><p className="text-xs text-muted-foreground">Total Items</p><p className="text-2xl font-bold">{stats.total}</p></div></CardContent></Card>
         <Card className="shadow-soft"><CardContent className="p-4 flex items-center gap-3"><AlertTriangle className="h-8 w-8 text-warning" /><div><p className="text-xs text-muted-foreground">Low Stock</p><p className="text-2xl font-bold">{stats.low}</p></div></CardContent></Card>
+        <Card className="shadow-soft"><CardContent className="p-4 flex items-center gap-3"><AlertTriangle className="h-8 w-8 text-destructive" /><div><p className="text-xs text-muted-foreground">Out of Stock</p><p className="text-2xl font-bold">{stats.out}</p></div></CardContent></Card>
         <Card className="shadow-soft"><CardContent className="p-4 flex items-center gap-3"><AlertTriangle className="h-8 w-8 text-destructive" /><div><p className="text-xs text-muted-foreground">Expired</p><p className="text-2xl font-bold">{stats.expired}</p></div></CardContent></Card>
         <Card className="shadow-soft"><CardContent className="p-4 flex items-center gap-3"><TrendingUp className="h-8 w-8 text-success" /><div><p className="text-xs text-muted-foreground">Stock Value</p><p className="text-2xl font-bold">{fmtUSD(stats.value)}</p></div></CardContent></Card>
       </div>
@@ -291,8 +304,8 @@ export default function Medicines() {
               <Input placeholder="Search by name, brand, generic, barcode..." value={q} onChange={e => setQ(e.target.value)} className="pl-9" />
             </div>
             <div className="flex gap-1">
-              {(["all", "low", "expired"] as const).map(f => (
-                <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="capitalize">{f}</Button>
+              {(["all", "low", "out", "expired"] as const).map(f => (
+                <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="capitalize">{f === "out" ? "Out of Stock" : f}</Button>
               ))}
             </div>
           </div>
@@ -301,45 +314,57 @@ export default function Medicines() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-16">Image</TableHead>
                   <TableHead>Medicine</TableHead>
-                  <TableHead>Brand / Supplier</TableHead>
-                  <TableHead className="text-right">Cost</TableHead>
-                  <TableHead className="text-right">Sale (Unit)</TableHead>
-                  <TableHead className="text-right">Box / Packet / Strip</TableHead>
-                  <TableHead className="text-center">Margin</TableHead>
-                  <TableHead className="text-center">Stock</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Purchase / Pcs</TableHead>
+                  <TableHead className="text-right">Selling / Pcs</TableHead>
+                  <TableHead className="text-center">Total Pcs</TableHead>
+                  <TableHead className="text-center">Unit</TableHead>
+                  <TableHead className="text-center">Sold</TableHead>
+                  <TableHead className="text-center">Available</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                   <TableHead>Expiry</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-12">No medicines found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-12">No medicines found</TableCell></TableRow>
                 ) : filtered.map(m => {
-                  const low = m.stock <= m.low_stock_threshold;
+                  const sold = soldMap[m.id] ?? 0;
+                  const avail = Number(m.stock ?? 0);
+                  const total = avail + sold;
+                  const out = avail === 0;
+                  const low = !out && avail <= m.low_stock_threshold;
                   const expired = m.expiry_date && new Date(m.expiry_date) < new Date();
-                  const mg = margin(m);
                   return (
                     <TableRow key={m.id} className="hover:bg-muted/40">
                       <TableCell>
-                        <div className="font-medium">{m.name}</div>
-                        {m.generic_name && <div className="text-xs text-muted-foreground">{m.generic_name}</div>}
-                        <div className="text-[10px] text-muted-foreground">{m.unit}{m.barcode ? ` • ${m.barcode}` : ""}</div>
+                        {m.image_url ? (
+                          <img src={m.image_url} alt={m.name} className="h-10 w-10 rounded object-cover border" />
+                        ) : (
+                          <div className="h-10 w-10 rounded bg-muted flex items-center justify-center"><Pill className="h-4 w-4 text-muted-foreground" /></div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">{m.brand ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">{m.supplier ?? ""}</div>
+                        <div className="font-medium">{m.name}</div>
+                        {m.generic_name && <div className="text-xs text-muted-foreground">{m.generic_name}</div>}
+                        {m.brand && <div className="text-[10px] text-muted-foreground">{m.brand}</div>}
                       </TableCell>
+                      <TableCell className="text-sm">{m.category ? <Badge variant="outline">{m.category}</Badge> : "—"}</TableCell>
                       <TableCell className="text-right font-mono text-sm">{fmtUSD(Number(m.cost_price_usd ?? 0))}</TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold text-primary">{fmtUSD(Number(m.price_usd ?? 0))}</TableCell>
-                      <TableCell className="text-right text-xs">
-                        {m.box_price_usd ? <div>📦 {fmtUSD(Number(m.box_price_usd))} /{m.units_per_box ?? "?"}</div> : null}
-                        {m.packet_price_usd ? <div>🧾 {fmtUSD(Number(m.packet_price_usd))} /{m.units_per_packet ?? "?"}</div> : null}
-                        {m.strip_price_usd ? <div>💊 {fmtUSD(Number(m.strip_price_usd))} /{m.units_per_strip ?? "?"}</div> : null}
-                        {!m.box_price_usd && !m.packet_price_usd && !m.strip_price_usd && <span className="text-muted-foreground">—</span>}
+                      <TableCell className="text-center font-mono text-sm">{total}</TableCell>
+                      <TableCell className="text-center text-xs">{m.unit}</TableCell>
+                      <TableCell className="text-center font-mono text-sm text-muted-foreground">{sold}</TableCell>
+                      <TableCell className="text-center"><span className={`font-mono font-bold ${out ? "text-destructive" : low ? "text-warning" : "text-success"}`}>{avail}</span></TableCell>
+                      <TableCell className="text-center">
+                        {expired ? <Badge variant="destructive">Expired</Badge>
+                          : out ? <Badge variant="destructive">Out</Badge>
+                          : low ? <Badge className="bg-warning text-warning-foreground hover:bg-warning/90">Low</Badge>
+                          : <Badge variant="secondary" className="bg-success/15 text-success">In Stock</Badge>}
                       </TableCell>
-                      <TableCell className="text-center">{mg ? <Badge variant="secondary">{mg}%</Badge> : "—"}</TableCell>
-                      <TableCell className="text-center"><Badge variant={low ? "destructive" : "secondary"}>{m.stock}</Badge></TableCell>
                       <TableCell className="text-xs">{m.expiry_date ? <span className={expired ? "text-destructive font-medium" : ""}>{m.expiry_date}</span> : "—"}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
@@ -367,7 +392,10 @@ export default function Medicines() {
                     return (
                       <TableRow key={h.id}>
                         <TableCell className="text-xs">{new Date(h.created_at).toLocaleString()}</TableCell>
-                        <TableCell className="font-medium">{m?.name ?? "—"}</TableCell>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          {m?.image_url && <img src={m.image_url} alt="" className="h-6 w-6 rounded object-cover" />}
+                          {m?.name ?? "—"}
+                        </TableCell>
                         <TableCell><Badge variant="outline" className="capitalize">{h.change_type}</Badge></TableCell>
                         <TableCell className={`text-right font-mono font-semibold ${h.quantity_change > 0 ? "text-success" : "text-destructive"}`}>{h.quantity_change > 0 ? "+" : ""}{h.quantity_change}</TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">{h.stock_before} → <span className="font-semibold text-foreground">{h.stock_after}</span></TableCell>
@@ -386,27 +414,45 @@ export default function Medicines() {
         <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit Medicine" : "Add New Medicine"}</DialogTitle></DialogHeader>
           <div className="space-y-5 py-2">
-            {/* Basic */}
+            {/* Image + Basic */}
             <div>
               <h3 className="text-sm font-semibold mb-2 text-primary">Basic Info</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2 space-y-1.5"><Label>Medicine Name *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label>Generic Name</Label><Input value={form.generic_name} onChange={e => setForm({ ...form, generic_name: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label>Brand</Label><Input value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} /></div>
-                <div className="space-y-1.5">
-                  <Label>Category</Label>
-                  <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                    <SelectContent>{cats.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
+              <div className="flex gap-4">
+                <div className="shrink-0">
+                  <Label className="text-xs">Image</Label>
+                  <div className="mt-1.5 h-28 w-28 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden bg-muted/30 relative group">
+                    {form.image_url ? (
+                      <>
+                        <img src={form.image_url} alt="" className="h-full w-full object-cover" />
+                        <button type="button" onClick={() => setForm({ ...form, image_url: "" })} className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100"><X className="h-3 w-3" /></button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => imgRef.current?.click()} className="flex flex-col items-center text-muted-foreground hover:text-primary text-xs">
+                        <ImagePlus className="h-6 w-6 mb-1" />{uploading ? "Uploading..." : "Upload"}
+                      </button>
+                    )}
+                    <input ref={imgRef} type="file" accept="image/*" hidden onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0])} />
+                  </div>
                 </div>
-                <div className="space-y-1.5"><Label>Supplier</Label><Input value={form.supplier} onChange={e => setForm({ ...form, supplier: e.target.value })} /></div>
-                <div className="space-y-1.5">
-                  <Label>Default Sell Unit</Label>
-                  <Select value={form.unit} onValueChange={v => setForm({ ...form, unit: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{units.map(u => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="col-span-2 space-y-1.5"><Label>Medicine Name *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+                  <div className="space-y-1.5"><Label>Generic Name</Label><Input value={form.generic_name} onChange={e => setForm({ ...form, generic_name: e.target.value })} /></div>
+                  <div className="space-y-1.5"><Label>Brand</Label><Input value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} /></div>
+                  <div className="space-y-1.5">
+                    <Label>Category</Label>
+                    <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                      <SelectContent>{cats.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5"><Label>Supplier</Label><Input value={form.supplier} onChange={e => setForm({ ...form, supplier: e.target.value })} /></div>
+                  <div className="space-y-1.5">
+                    <Label>Default Sell Unit</Label>
+                    <Select value={form.unit} onValueChange={v => setForm({ ...form, unit: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{units.map(u => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -425,7 +471,7 @@ export default function Medicines() {
               </div>
             </div>
 
-            {/* Pricing - simple purchase unit based */}
+            {/* Pricing */}
             <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4 space-y-4">
               <h3 className="text-sm font-semibold text-primary">💰 Purchase — pick a unit, enter price, per-piece auto-calculates</h3>
 
@@ -508,28 +554,51 @@ export default function Medicines() {
                 </div>
               )}
 
-              <div className="border-t pt-3">
-                <Label className="text-xs uppercase text-muted-foreground">Sale Price (set manually based on cost)</Label>
-                <div className="grid grid-cols-4 gap-3 mt-2">
-                  <div><Label className="text-xs">Per Pcs *</Label><Input type="number" step="0.01" value={form.price_usd} onChange={e => updatePerUnit("price_usd", e.target.value)} /></div>
-                  <div><Label className="text-xs">Strip {form.units_per_strip ? `(${form.units_per_strip})` : ""}</Label><Input type="number" step="0.01" value={form.strip_price_usd} onChange={e => updatePack("strip_price_usd", e.target.value, form.units_per_strip, "price")} /></div>
-                  <div><Label className="text-xs">Packet {form.units_per_packet ? `(${form.units_per_packet})` : ""}</Label><Input type="number" step="0.01" value={form.packet_price_usd} onChange={e => updatePack("packet_price_usd", e.target.value, form.units_per_packet, "price")} /></div>
-                  <div><Label className="text-xs">Box {form.units_per_box ? `(${form.units_per_box})` : ""}</Label><Input type="number" step="0.01" value={form.box_price_usd} onChange={e => updatePack("box_price_usd", e.target.value, form.units_per_box, "price")} /></div>
+              {/* Sale price - simplified */}
+              <div className="border-t pt-4">
+                <Label className="text-sm font-semibold text-primary">💵 Sale Price (set manually based on cost)</Label>
+                <p className="text-[11px] text-muted-foreground mb-2">Set per-piece sell price. Pack prices auto-calculate from per-pcs price.</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Per Pcs *</Label>
+                    <Input
+                      type="number" step="0.01"
+                      value={form.price_usd}
+                      onChange={e => {
+                        const v = e.target.value;
+                        const n = Number(v || 0);
+                        const next: any = { ...form, price_usd: v };
+                        if (n) {
+                          if (form.units_per_strip) next.strip_price_usd = (n * Number(form.units_per_strip)).toFixed(2);
+                          if (form.units_per_packet) next.packet_price_usd = (n * Number(form.units_per_packet)).toFixed(2);
+                          if (form.units_per_box) next.box_price_usd = (n * Number(form.units_per_box)).toFixed(2);
+                        }
+                        setForm(next);
+                      }}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-1"><Label className="text-xs text-muted-foreground">Strip {form.units_per_strip ? `(${form.units_per_strip} pcs)` : ""}</Label><Input type="number" step="0.01" value={form.strip_price_usd} onChange={e => updatePack("strip_price_usd", e.target.value, form.units_per_strip, "price")} /></div>
+                  <div className="space-y-1"><Label className="text-xs text-muted-foreground">Packet {form.units_per_packet ? `(${form.units_per_packet} pcs)` : ""}</Label><Input type="number" step="0.01" value={form.packet_price_usd} onChange={e => updatePack("packet_price_usd", e.target.value, form.units_per_packet, "price")} /></div>
+                  <div className="space-y-1"><Label className="text-xs text-muted-foreground">Box {form.units_per_box ? `(${form.units_per_box} pcs)` : ""}</Label><Input type="number" step="0.01" value={form.box_price_usd} onChange={e => updatePack("box_price_usd", e.target.value, form.units_per_box, "price")} /></div>
                 </div>
+                {form.cost_price_usd && form.price_usd && Number(form.cost_price_usd) > 0 && (
+                  <div className="mt-3 rounded-md bg-success/10 border border-success/30 p-2 text-sm">
+                    <span className="text-muted-foreground">Profit / pcs: </span>
+                    <span className="font-bold text-success">{fmtUSD(Number(form.price_usd) - Number(form.cost_price_usd))}</span>
+                    <span className="text-muted-foreground ml-2">({(((Number(form.price_usd) - Number(form.cost_price_usd)) / Number(form.cost_price_usd)) * 100).toFixed(0)}% margin)</span>
+                  </div>
+                )}
               </div>
-
-              {form.cost_price_usd && form.price_usd && Number(form.cost_price_usd) > 0 && (
-                <p className="text-xs text-success font-medium">
-                  Profit / pcs: {fmtUSD(Number(form.price_usd) - Number(form.cost_price_usd))} ({(((Number(form.price_usd) - Number(form.cost_price_usd)) / Number(form.cost_price_usd)) * 100).toFixed(0)}% margin)
-                </p>
-              )}
-              <p className="text-[11px] text-muted-foreground">💡 Example: Box select → 10 pcs/box → Cost $20 → per pcs auto = $2.00. Sale price manually set kor.</p>
             </div>
 
             <div>
               <h3 className="text-sm font-semibold mb-2 text-primary">Stock & Expiry</h3>
               <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5"><Label>{editing ? "Current" : "Initial"} Stock</Label><Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} disabled={!!editing} /></div>
+                <div className="space-y-1.5">
+                  <Label>{editing ? "Current Stock (edit logs to history)" : "Initial Stock"}</Label>
+                  <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} />
+                </div>
                 <div className="space-y-1.5"><Label>Low Stock Alert</Label><Input type="number" value={form.low_stock_threshold} onChange={e => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Expiry Date</Label><Input type="date" value={form.expiry_date} onChange={e => setForm({ ...form, expiry_date: e.target.value })} /></div>
               </div>
@@ -565,7 +634,6 @@ export default function Medicines() {
         </DialogContent>
       </Dialog>
 
-      {/* Units / Categories Manager */}
       <Dialog open={optDlg} onOpenChange={setOptDlg}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Manage Units & Categories</DialogTitle></DialogHeader>
@@ -575,36 +643,6 @@ export default function Medicines() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function OptionList({ title, table, items, onChange }: { title: string; table: string; items: any[]; onChange: () => void }) {
-  const [name, setName] = useState("");
-  const add = async () => {
-    if (!name.trim()) return;
-    const { error } = await supabase.from(table as any).insert({ name: name.trim() });
-    if (error) return toast.error(error.message);
-    setName(""); onChange();
-  };
-  const del = async (id: string) => {
-    await supabase.from(table as any).delete().eq("id", id); onChange();
-  };
-  return (
-    <div className="space-y-2">
-      <h4 className="font-semibold text-sm">{title}</h4>
-      <div className="flex gap-2">
-        <Input value={name} onChange={e => setName(e.target.value)} placeholder={`Add ${title.slice(0, -1)}...`} onKeyDown={e => e.key === "Enter" && add()} />
-        <Button size="sm" onClick={add}><Plus className="h-4 w-4" /></Button>
-      </div>
-      <div className="border rounded max-h-64 overflow-y-auto">
-        {items.map(i => (
-          <div key={i.id} className="flex items-center justify-between px-3 py-1.5 border-b last:border-0">
-            <span className="text-sm">{i.name}</span>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => del(i.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
