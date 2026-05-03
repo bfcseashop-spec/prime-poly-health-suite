@@ -1467,8 +1467,15 @@ export default function Investment() {
                 ref={recImgRef}
                 type="file"
                 accept="image/*"
+                multiple
                 hidden
-                onChange={e => e.target.files?.[0] && handleRecImage(e.target.files[0])}
+                onChange={async e => {
+                  const files = Array.from(e.target.files || []);
+                  for (const f of files) {
+                    await handleRecImage(f);
+                  }
+                  if (recImgRef.current) recImgRef.current.value = "";
+                }}
               />
               <div className="flex flex-wrap gap-2">
                 {recForm.images.map((url, i) => (
