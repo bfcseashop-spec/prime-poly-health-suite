@@ -281,6 +281,69 @@ export default function Investment() {
   };
 
   // ===== Contribution CRUD =====
+  const [recOpen, setRecOpen] = useState(false);
+  const [recForm, setRecForm] = useState({
+    investment_name: "Capital Amount Investment",
+    shareholder_id: "",
+    category: "",
+    amount_usd: "" as any,
+    paid_on: format(new Date(), "yyyy-MM-dd"),
+    notes: "",
+    images: [] as string[],
+  });
+  const [recImgUploading, setRecImgUploading] = useState(false);
+  const recImgRef = useRef<HTMLInputElement>(null);
+
+  const openRecord = (shareholderId?: string, investmentName?: string) => {
+    setRecForm({
+      investment_name: investmentName || "Capital Amount Investment",
+      shareholder_id: shareholderId || "",
+      category: "",
+      amount_usd: "",
+      paid_on: format(new Date(), "yyyy-MM-dd"),
+      notes: "",
+      images: [],
+    });
+    setRecOpen(true);
+  };
+
+  const handleRecImage = async (file: File) => {
+    setRecImgUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("investment-slips").upload(path, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from("investment-slips").getPublicUrl(path);
+      setRecForm(f => ({ ...f, images: [...f.images, data.publicUrl] }));
+      toast.success("Image uploaded");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setRecImgUploading(false); }
+  };
+
+  const submitRecord = async () => {
+    if (!recForm.shareholder_id) return toast.error("Select investor");
+    if (!recForm.category) return toast.error("Select category");
+    const amt = Number(recForm.amount_usd);
+    if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    const { data: u } = await supabase.auth.getUser();
+    const payload: any = {
+      shareholder_id: recForm.shareholder_id,
+      investment_name: recForm.investment_name || "Capital Amount Investment",
+      category: recForm.category,
+      amount_usd: amt,
+      paid_on: recForm.paid_on,
+      payment_method: "cash",
+      notes: recForm.notes || null,
+      slip_url: recForm.images.join("\n") || null,
+      created_by: u.user?.id ?? null,
+    };
+    const { error } = await (supabase.from("shareholder_contributions" as any) as any).insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success("Contribution recorded");
+    setRecOpen(false); load();
+  };
+
   const openNewC = (shareholderId?: string) => {
     setCForm({
       ...emptyContribution,
@@ -594,7 +657,7 @@ export default function Investment() {
                       <Button size="sm" variant="outline" className="flex-1" onClick={() => openCapitalEdit(s)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" />Edit Capital
                       </Button>
-                      <Button size="sm" className="flex-1 clinic-gradient text-primary-foreground" onClick={() => openNewC(s.id)}>
+                      <Button size="sm" className="flex-1 clinic-gradient text-primary-foreground" onClick={() => openRecord(s.id)}>
                         <Plus className="h-3.5 w-3.5 mr-1" />Add Payment
                       </Button>
                     </div>
@@ -656,6 +719,9 @@ export default function Investment() {
               </div>
               <Button variant="outline" size="sm" className="h-9" onClick={exportCSV}>
                 <Download className="h-4 w-4 mr-1" />Export
+              </Button>
+              <Button size="sm" variant="outline" className="h-9" onClick={() => openRecord()}>
+                <Receipt className="h-4 w-4 mr-1" />Record
               </Button>
               <Button size="sm" className="h-9 clinic-gradient text-primary-foreground" onClick={() => openNewC()}>
                 <Plus className="h-4 w-4 mr-1" />Add
@@ -1182,6 +1248,153 @@ export default function Investment() {
               className="w-full h-11 clinic-gradient text-primary-foreground font-semibold text-base shadow-md"
             >
               {cForm.id ? "Save Changes" : "Add Investment"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* RECORD CONTRIBUTION (simple) */}
+      <Dialog open={recOpen} onOpenChange={setRecOpen}>
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="px-6 pt-5 pb-4 border-b bg-muted/30 shrink-0">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+                <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-primary/10 text-primary">
+                  <Receipt className="h-4 w-4" />
+                </span>
+                Record Contribution
+              </DialogTitle>
+              <p className="text-xs text-muted-foreground pl-9">
+                Record a payment made by an investor toward an investment
+              </p>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 py-5 space-y-4 bg-background overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">
+                Investment <span className="text-destructive">*</span>
+              </Label>
+              <Select value={recForm.investment_name} onValueChange={v => setRecForm({ ...recForm, investment_name: v })}>
+                <SelectTrigger className="h-11 border-2 focus:border-primary"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from(new Set([
+                    "Capital Amount Investment",
+                    ...contributions.map((c: any) => c.investment_name).filter(Boolean),
+                  ])).map(inv => {
+                    const total = contributions
+                      .filter((c: any) => (c.investment_name || "Capital Amount Investment") === inv)
+                      .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
+                    return (
+                      <SelectItem key={inv} value={inv}>{inv} ({fmtUSD(total)})</SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">
+                Investor <span className="text-destructive">*</span>
+              </Label>
+              <Select value={recForm.shareholder_id} onValueChange={v => setRecForm({ ...recForm, shareholder_id: v })}>
+                <SelectTrigger className="h-11 border-2 focus:border-primary">
+                  <SelectValue placeholder="Select investor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shareholders.map(s => (<SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Category</Label>
+              <Select value={recForm.category} onValueChange={v => setRecForm({ ...recForm, category: v })}>
+                <SelectTrigger className="h-11 border-2 focus:border-primary">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">
+                  Amount ($) <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  type="number" min={0} step="0.01"
+                  className="h-11 border-2 focus-visible:border-primary"
+                  value={recForm.amount_usd}
+                  onChange={e => setRecForm({ ...recForm, amount_usd: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">
+                  Date <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  type="date"
+                  className="h-11 border-2 focus-visible:border-primary"
+                  value={recForm.paid_on}
+                  onChange={e => setRecForm({ ...recForm, paid_on: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Images</Label>
+              <input
+                ref={recImgRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={e => e.target.files?.[0] && handleRecImage(e.target.files[0])}
+              />
+              <div className="flex flex-wrap gap-2">
+                {recForm.images.map((url, i) => (
+                  <div key={i} className="relative h-16 w-16 rounded-lg overflow-hidden border-2 group">
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setRecForm(f => ({ ...f, images: f.images.filter((_, idx) => idx !== i) }))}
+                      className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 border-dashed"
+                  onClick={() => recImgRef.current?.click()}
+                  disabled={recImgUploading}
+                >
+                  <Upload className="h-3.5 w-3.5 mr-1" />
+                  {recImgUploading ? "Uploading..." : "Add Image"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Note</Label>
+              <Textarea
+                rows={3}
+                className="border-2 focus-visible:border-primary resize-none"
+                value={recForm.notes}
+                onChange={e => setRecForm({ ...recForm, notes: e.target.value })}
+              />
+            </div>
+
+            <Button
+              onClick={submitRecord}
+              className="w-full h-11 clinic-gradient text-primary-foreground font-semibold text-base shadow-md"
+            >
+              Record Contribution
             </Button>
           </div>
         </DialogContent>
