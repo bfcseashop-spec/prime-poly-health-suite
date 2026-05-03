@@ -9,6 +9,7 @@ type Item = { title: string; url: string; icon: any; roles?: AppRole[] };
 const main: Item[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Patients", url: "/patients", icon: Users, roles: ["admin","doctor","nurse","receptionist","accountant"] },
+  { title: "Doctor Management", url: "/doctors", icon: UserPlus, roles: ["admin","receptionist","accountant"] },
   { title: "OPD Queue", url: "/opd", icon: Stethoscope, roles: ["admin","doctor","nurse","receptionist"] },
   { title: "IPD / Admissions", url: "/ipd", icon: BedDouble, roles: ["admin","doctor","nurse","receptionist"] },
   { title: "Prescriptions", url: "/prescriptions", icon: FileText, roles: ["admin","doctor"] },
