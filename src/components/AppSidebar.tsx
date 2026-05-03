@@ -16,7 +16,6 @@ const main: Item[] = [
   { title: "Invoice History", url: "/invoices", icon: History, roles: ["admin","accountant","receptionist","pharmacist"] },
 ];
 const future: Item[] = [
-  { title: "Pharmacy", url: "/pos", icon: Pill, roles: ["admin","pharmacist"] },
   { title: "Laboratory", url: "/lab", icon: FlaskConical, roles: ["admin","lab_tech"] },
   { title: "X-Ray", url: "/xray", icon: ScanLine, roles: ["admin","lab_tech"] },
   { title: "Operation Theater", url: "/ot", icon: Activity, roles: ["admin","doctor","nurse"] },
