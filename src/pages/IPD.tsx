@@ -279,9 +279,14 @@ export default function IPD() {
                         </Button>
                       )}
                       {room.status === "occupied" && adm && (
-                        <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => setDischargeFor(adm)}>
-                          <LogOut className="h-3 w-3 mr-1" />Discharge
-                        </Button>
+                        <>
+                          <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => openTransfer(adm)} title="Transfer">
+                            <ArrowRightLeft className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => setDischargeFor(adm)}>
+                            <LogOut className="h-3 w-3 mr-1" />Discharge
+                          </Button>
+                        </>
                       )}
                       <Select value={room.status} onValueChange={(v) => setRoomStatus(room.id, v)}>
                         <SelectTrigger className="h-7 w-7 px-0 justify-center" />
