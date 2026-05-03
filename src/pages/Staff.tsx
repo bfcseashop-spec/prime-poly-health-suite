@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import {
   UserPlus, Search, Pencil, Trash2, Stethoscope, FlaskConical, Users,
-  Wallet, Phone, Mail, Calendar, Briefcase, GraduationCap,
+  Wallet, Phone, Mail, Calendar, Briefcase, GraduationCap, Eye, MapPin, FileText,
 } from "lucide-react";
 
 const POSITIONS = [
