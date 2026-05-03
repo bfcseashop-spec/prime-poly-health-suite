@@ -209,7 +209,7 @@ export default function Medicines() {
 
   const handleImport = async (file: File) => {
     try {
-      const rows = await importFromFile(file);
+      const rows = await parseImportFile(file);
       if (!rows.length) return toast.error("Empty file");
       const cleaned = rows.map((r: any) => ({
         name: r.name, generic_name: r.generic_name || null, brand: r.brand || null,
@@ -247,7 +247,7 @@ export default function Medicines() {
           <Button variant="outline" onClick={() => setOptDlg(true)}><Settings2 className="h-4 w-4 mr-2" />Units / Categories</Button>
           <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4 mr-2" />Import</Button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" hidden onChange={e => e.target.files?.[0] && handleImport(e.target.files[0])} />
-          <Button variant="outline" onClick={() => exportToXLSX(meds, "medicines")}><Download className="h-4 w-4 mr-2" />Export XLSX</Button>
+          <Button variant="outline" onClick={() => exportToExcel(meds, "medicines")}><Download className="h-4 w-4 mr-2" />Export XLSX</Button>
           <Button variant="outline" onClick={() => exportToCSV(meds, "medicines")}><Download className="h-4 w-4 mr-2" />CSV</Button>
           <Button onClick={openAdd} size="lg" className="shadow-soft"><Plus className="h-4 w-4 mr-2" />Add Medicine</Button>
         </div>
