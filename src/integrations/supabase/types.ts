@@ -50,6 +50,63 @@ export type Database = {
         }
         Relationships: []
       }
+      insurance_cards: {
+        Row: {
+          card_no: string
+          coverage_amount_usd: number
+          created_at: string
+          created_by: string | null
+          discount_percent: number
+          id: string
+          notes: string | null
+          patient_id: string | null
+          patient_name: string | null
+          provider: string | null
+          status: string
+          tier: Database["public"]["Enums"]["insurance_tier"]
+          updated_at: string
+          used_amount_usd: number
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          card_no: string
+          coverage_amount_usd?: number
+          created_at?: string
+          created_by?: string | null
+          discount_percent?: number
+          id?: string
+          notes?: string | null
+          patient_id?: string | null
+          patient_name?: string | null
+          provider?: string | null
+          status?: string
+          tier?: Database["public"]["Enums"]["insurance_tier"]
+          updated_at?: string
+          used_amount_usd?: number
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Update: {
+          card_no?: string
+          coverage_amount_usd?: number
+          created_at?: string
+          created_by?: string | null
+          discount_percent?: number
+          id?: string
+          notes?: string | null
+          patient_id?: string | null
+          patient_name?: string | null
+          provider?: string | null
+          status?: string
+          tier?: Database["public"]["Enums"]["insurance_tier"]
+          updated_at?: string
+          used_amount_usd?: number
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: []
+      }
       lab_reports: {
         Row: {
           created_at: string
@@ -629,6 +686,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_insurance_card_no: {
+        Args: { _tier: Database["public"]["Enums"]["insurance_tier"] }
+        Returns: string
+      }
       generate_invoice_no: { Args: never; Returns: string }
       generate_patient_code: { Args: never; Returns: string }
       get_user_roles: {
@@ -652,6 +713,7 @@ export type Database = {
         | "lab_tech"
         | "accountant"
         | "receptionist"
+      insurance_tier: "normal" | "silver" | "gold" | "vip"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -788,6 +850,7 @@ export const Constants = {
         "accountant",
         "receptionist",
       ],
+      insurance_tier: ["normal", "silver", "gold", "vip"],
     },
   },
 } as const
