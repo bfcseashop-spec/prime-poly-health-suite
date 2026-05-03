@@ -107,6 +107,42 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_payments: {
+        Row: {
+          amount_usd: number
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          paid_on: string
+          payment_method: string
+          reference: string | null
+          sale_id: string
+        }
+        Insert: {
+          amount_usd?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_on?: string
+          payment_method?: string
+          reference?: string | null
+          sale_id: string
+        }
+        Update: {
+          amount_usd?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_on?: string
+          payment_method?: string
+          reference?: string | null
+          sale_id?: string
+        }
+        Relationships: []
+      }
       lab_reports: {
         Row: {
           created_at: string
@@ -232,29 +268,38 @@ export type Database = {
       }
       medicine_sale_items: {
         Row: {
+          description: string | null
           id: string
-          medicine_id: string
+          item_type: string
+          medicine_id: string | null
           name: string
           price_usd: number
           quantity: number
+          ref_id: string | null
           sale_id: string
           total_usd: number
         }
         Insert: {
+          description?: string | null
           id?: string
-          medicine_id: string
+          item_type?: string
+          medicine_id?: string | null
           name: string
           price_usd: number
           quantity: number
+          ref_id?: string | null
           sale_id: string
           total_usd: number
         }
         Update: {
+          description?: string | null
           id?: string
-          medicine_id?: string
+          item_type?: string
+          medicine_id?: string | null
           name?: string
           price_usd?: number
           quantity?: number
+          ref_id?: string | null
           sale_id?: string
           total_usd?: number
         }
@@ -277,40 +322,61 @@ export type Database = {
       }
       medicine_sales: {
         Row: {
+          amount_paid_usd: number
           cashier_id: string | null
           created_at: string
           discount_usd: number
+          due_usd: number
           id: string
+          insurance_card_id: string | null
+          insurance_discount_usd: number
           invoice_no: string
+          notes: string | null
           patient_id: string | null
           payment_method: string
           prescription_id: string | null
+          sale_type: string
+          status: string
           subtotal_usd: number
           tax_usd: number
           total_usd: number
         }
         Insert: {
+          amount_paid_usd?: number
           cashier_id?: string | null
           created_at?: string
           discount_usd?: number
+          due_usd?: number
           id?: string
+          insurance_card_id?: string | null
+          insurance_discount_usd?: number
           invoice_no: string
+          notes?: string | null
           patient_id?: string | null
           payment_method?: string
           prescription_id?: string | null
+          sale_type?: string
+          status?: string
           subtotal_usd?: number
           tax_usd?: number
           total_usd?: number
         }
         Update: {
+          amount_paid_usd?: number
           cashier_id?: string | null
           created_at?: string
           discount_usd?: number
+          due_usd?: number
           id?: string
+          insurance_card_id?: string | null
+          insurance_discount_usd?: number
           invoice_no?: string
+          notes?: string | null
           patient_id?: string | null
           payment_method?: string
           prescription_id?: string | null
+          sale_type?: string
+          status?: string
           subtotal_usd?: number
           tax_usd?: number
           total_usd?: number
@@ -641,6 +707,39 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      service_catalog: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          price_usd: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          price_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          price_usd?: number
           updated_at?: string
         }
         Relationships: []
