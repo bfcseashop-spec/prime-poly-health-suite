@@ -418,9 +418,16 @@ export default function Investment() {
       return;
     }
 
-    // Create mode: split by allocations (or single shareholder)
-    const allocs = (cForm.allocations || []).filter(a => a.shareholder_id && Number(a.share_percent) > 0);
-    if (allocs.length === 0) return toast.error("Add at least one investor");
+    // Create mode: split by allocations. If none provided, auto-split across active shareholders by share_percent (fallback equal)
+    let allocs = (cForm.allocations || []).filter(a => a.shareholder_id && Number(a.share_percent) > 0);
+    if (allocs.length === 0) {
+      const active = shareholders.filter((s: any) => s.active !== false);
+      if (active.length === 0) return toast.error("Add at least one investor first");
+      const totalShare = active.reduce((s: number, x: any) => s + Number(x.share_percent || 0), 0);
+      allocs = totalShare > 0
+        ? active.map((s: any) => ({ shareholder_id: s.id, share_percent: Number(s.share_percent || 0) }))
+        : active.map((s: any) => ({ shareholder_id: s.id, share_percent: 100 / active.length }));
+    }
     const totalPct = allocs.reduce((s, a) => s + Number(a.share_percent || 0), 0);
     if (totalPct <= 0) return toast.error("Share % must be greater than 0");
 
