@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Phone, MapPin, Cake, ShieldCheck, Stethoscope, Pill, Receipt, Calendar, Activity } from "lucide-react";
+import { ArrowLeft, Phone, MapPin, Cake, ShieldCheck, Stethoscope, Pill, Receipt, Calendar, Activity, ClipboardList, FlaskConical } from "lucide-react";
 import { fmtUSD } from "@/lib/currency";
+import MedicalRecordsTab from "@/components/patient/MedicalRecordsTab";
+import LabReportsTab from "@/components/patient/LabReportsTab";
 
 function initials(name?: string) {
   return (name ?? "?").split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
@@ -102,13 +104,18 @@ export default function PatientProfile() {
         ))}
       </div>
 
-      <Tabs defaultValue="visits">
-        <TabsList>
+      <Tabs defaultValue="records">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="records"><ClipboardList className="h-4 w-4 mr-1" />Medical Records</TabsTrigger>
+          <TabsTrigger value="lab"><FlaskConical className="h-4 w-4 mr-1" />Lab Reports</TabsTrigger>
           <TabsTrigger value="visits">Visit History</TabsTrigger>
           <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
           <TabsTrigger value="pharmacy">Pharmacy</TabsTrigger>
           <TabsTrigger value="info">Info & Notes</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="records"><MedicalRecordsTab patientId={p.id} /></TabsContent>
+        <TabsContent value="lab"><LabReportsTab patientId={p.id} /></TabsContent>
 
         <TabsContent value="visits">
           <Card className="shadow-soft">

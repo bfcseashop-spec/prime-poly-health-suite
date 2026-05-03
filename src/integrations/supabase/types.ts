@@ -50,6 +50,129 @@ export type Database = {
         }
         Relationships: []
       }
+      lab_reports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_url: string | null
+          id: string
+          lab_name: string | null
+          notes: string | null
+          ordered_by: string | null
+          ordered_by_name: string | null
+          patient_id: string
+          reference_range: string | null
+          report_date: string | null
+          results: string | null
+          status: string
+          test_date: string
+          test_name: string
+          test_type: string | null
+          updated_at: string
+          visit_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_url?: string | null
+          id?: string
+          lab_name?: string | null
+          notes?: string | null
+          ordered_by?: string | null
+          ordered_by_name?: string | null
+          patient_id: string
+          reference_range?: string | null
+          report_date?: string | null
+          results?: string | null
+          status?: string
+          test_date?: string
+          test_name: string
+          test_type?: string | null
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_url?: string | null
+          id?: string
+          lab_name?: string | null
+          notes?: string | null
+          ordered_by?: string | null
+          ordered_by_name?: string | null
+          patient_id?: string
+          reference_range?: string | null
+          report_date?: string | null
+          results?: string | null
+          status?: string
+          test_date?: string
+          test_name?: string
+          test_type?: string | null
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Relationships: []
+      }
+      medical_records: {
+        Row: {
+          advice: string | null
+          attachments: string[] | null
+          chief_complaint: string | null
+          created_at: string
+          created_by: string | null
+          diagnosis: string | null
+          doctor_id: string | null
+          doctor_name: string | null
+          examination: string | null
+          follow_up_date: string | null
+          id: string
+          patient_id: string
+          record_date: string
+          symptoms: string | null
+          treatment_plan: string | null
+          updated_at: string
+          visit_id: string | null
+        }
+        Insert: {
+          advice?: string | null
+          attachments?: string[] | null
+          chief_complaint?: string | null
+          created_at?: string
+          created_by?: string | null
+          diagnosis?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          examination?: string | null
+          follow_up_date?: string | null
+          id?: string
+          patient_id: string
+          record_date?: string
+          symptoms?: string | null
+          treatment_plan?: string | null
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Update: {
+          advice?: string | null
+          attachments?: string[] | null
+          chief_complaint?: string | null
+          created_at?: string
+          created_by?: string | null
+          diagnosis?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          examination?: string | null
+          follow_up_date?: string | null
+          id?: string
+          patient_id?: string
+          record_date?: string
+          symptoms?: string | null
+          treatment_plan?: string | null
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Relationships: []
+      }
       medicine_sale_items: {
         Row: {
           id: string
