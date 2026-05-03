@@ -1371,7 +1371,7 @@ export default function Investment() {
                           .filter((c: any) => c.shareholder_id === v && (c.investment_name || "Capital Amount Investment") === invName)
                           .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
                         const due = Math.max(0, commit - paidSoFar);
-                        setRecForm({ ...recForm, shareholder_id: v, amount_usd: due > 0 ? String(due) : recForm.amount_usd });
+                        setRecForm({ ...recForm, shareholder_id: v });
                       }}
                     >
                       <SelectTrigger className="h-11 border-2 focus:border-primary">
@@ -1467,8 +1467,15 @@ export default function Investment() {
                 ref={recImgRef}
                 type="file"
                 accept="image/*"
+                multiple
                 hidden
-                onChange={e => e.target.files?.[0] && handleRecImage(e.target.files[0])}
+                onChange={async e => {
+                  const files = Array.from(e.target.files || []);
+                  for (const f of files) {
+                    await handleRecImage(f);
+                  }
+                  if (recImgRef.current) recImgRef.current.value = "";
+                }}
               />
               <div className="flex flex-wrap gap-2">
                 {recForm.images.map((url, i) => (
