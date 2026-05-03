@@ -21,6 +21,7 @@ import Insurance from "./pages/Insurance";
 import Laboratory from "./pages/Laboratory";
 import XRay from "./pages/XRay";
 import Services from "./pages/Services";
+import Medicines from "./pages/Medicines";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/lab" element={<ProtectedRoute roles={["admin","doctor","nurse","lab_tech","receptionist"]}><AppLayout><Laboratory /></AppLayout></ProtectedRoute>} />
               <Route path="/xray" element={<ProtectedRoute roles={["admin","doctor","nurse","lab_tech","receptionist"]}><AppLayout><XRay /></AppLayout></ProtectedRoute>} />
               <Route path="/services" element={<ProtectedRoute roles={["admin","accountant","receptionist","pharmacist","nurse"]}><AppLayout><Services /></AppLayout></ProtectedRoute>} />
+              <Route path="/medicines" element={<ProtectedRoute roles={["admin","pharmacist"]}><AppLayout><Medicines /></AppLayout></ProtectedRoute>} />
               <Route path="/ot" element={<Shell><ComingSoon title="Operation Theater" /></Shell>} />
               <Route path="/billing" element={<Shell><ComingSoon title="Billing & Invoices" /></Shell>} />
               <Route path="/expenses" element={<ProtectedRoute roles={["admin","accountant"]}><AppLayout><Expenses /></AppLayout></ProtectedRoute>} />
