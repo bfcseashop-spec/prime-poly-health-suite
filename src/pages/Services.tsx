@@ -276,30 +276,54 @@ export default function Services() {
         {/* SERVICES */}
         <TabsContent value="services" className="space-y-4">
           <Card>
-            <CardHeader className="flex-row items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search services..." className="pl-9" value={svcQ} onChange={e => setSvcQ(e.target.value)} />
+            <CardHeader className="flex-col gap-3 items-stretch">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search services..." className="pl-9" value={svcQ} onChange={e => setSvcQ(e.target.value)} />
+                </div>
+                <Select value={svcCat} onValueChange={setSvcCat}>
+                  <SelectTrigger className="w-[150px]"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Categories</SelectItem>{SERVICE_CATS.map(c => <SelectItem key={c} value={c} className="capitalize">{c.replace("_"," ")}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={svcStatus} onValueChange={setSvcStatus}>
+                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
+                </Select>
+                <Toolbar
+                  selectionCount={svcSel.size}
+                  onAdd={() => setSvcDlg({ active: true, category: "service", price_usd: 0 })}
+                  onImport={importServices}
+                  onExportCSV={() => exportToCSV(fServices.map(({ id, ...r }) => r), "services")}
+                  onExportXLSX={() => exportToExcel(fServices.map(({ id, ...r }) => r), "services")}
+                  onDownloadTemplate={() => downloadTemplate(["name","category","price_usd","description","active"], "services_template", { name:"Sample Service", category:"consultation", price_usd:50, description:"", active:true })}
+                  onPrintBarcode={() => printSvcBarcodes()}
+                  onBulkDelete={bulkDelServices}
+                />
               </div>
-              <Button onClick={() => setSvcDlg({ active: true, category: "service", price_usd: 0 })}><Plus className="h-4 w-4" /> Add Service</Button>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow>
+                  <TableHead className="w-10"><Checkbox checked={fServices.length > 0 && fServices.every(s => svcSel.has(s.id))} onCheckedChange={(c) => setSvcSel(c ? new Set(fServices.map(s => s.id)) : new Set())} /></TableHead>
+                  <TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                </TableRow></TableHeader>
                 <TableBody>
                   {fServices.map(s => (
-                    <TableRow key={s.id}>
+                    <TableRow key={s.id} data-state={svcSel.has(s.id) ? "selected" : undefined}>
+                      <TableCell><Checkbox checked={svcSel.has(s.id)} onCheckedChange={(c) => { const n = new Set(svcSel); c ? n.add(s.id) : n.delete(s.id); setSvcSel(n); }} /></TableCell>
                       <TableCell><div className="font-medium">{s.name}</div>{s.description && <div className="text-xs text-muted-foreground">{s.description}</div>}</TableCell>
                       <TableCell><Badge variant="secondary" className="capitalize">{s.category.replace("_", " ")}</Badge></TableCell>
                       <TableCell className="text-right font-semibold">{fmtUSD(s.price_usd)}</TableCell>
                       <TableCell>{s.active ? <Badge variant="outline" className="bg-success/15 text-success border-success/30">Active</Badge> : <Badge variant="outline">Inactive</Badge>}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" onClick={() => setSvcDlg(s)}><Pencil className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => delService(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => setSvcDlg(s)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => printSvcBarcodes([s.id])} title="Print Barcode"><BarcodeIcon className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => delService(s.id)} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!fServices.length && <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">No services yet</TableCell></TableRow>}
+                  {!fServices.length && <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No services match your filters</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -309,19 +333,46 @@ export default function Services() {
         {/* INJECTIONS */}
         <TabsContent value="injections" className="space-y-4">
           <Card>
-            <CardHeader className="flex-row items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search injections..." className="pl-9" value={injQ} onChange={e => setInjQ(e.target.value)} />
+            <CardHeader className="flex-col gap-3 items-stretch">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search injections..." className="pl-9" value={injQ} onChange={e => setInjQ(e.target.value)} />
+                </div>
+                <Select value={injRoute} onValueChange={setInjRoute}>
+                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Routes</SelectItem>{INJ_ROUTES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={injStock} onValueChange={setInjStock}>
+                  <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Stock</SelectItem><SelectItem value="in">In Stock</SelectItem><SelectItem value="low">Low ({"<"}5)</SelectItem><SelectItem value="out">Out of Stock</SelectItem></SelectContent>
+                </Select>
+                <Select value={injStatus} onValueChange={setInjStatus}>
+                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
+                </Select>
+                <Toolbar
+                  selectionCount={injSel.size}
+                  onAdd={() => setInjDlg({ active: true, route: "IM", price_usd: 0, stock: 0 })}
+                  onImport={importInjections}
+                  onExportCSV={() => exportToCSV(fInjs.map(({ id, ...r }) => r), "injections")}
+                  onExportXLSX={() => exportToExcel(fInjs.map(({ id, ...r }) => r), "injections")}
+                  onDownloadTemplate={() => downloadTemplate(["name","brand","dose","route","category","price_usd","stock","description","active"], "injections_template", { name:"Paracetamol Inj", brand:"Sample", dose:"500mg/1ml", route:"IM", category:"general", price_usd:5, stock:100, description:"", active:true })}
+                  onPrintBarcode={() => printInjBarcodes()}
+                  onBulkDelete={bulkDelInjs}
+                />
               </div>
-              <Button onClick={() => setInjDlg({ active: true, route: "IM", price_usd: 0, stock: 0 })}><Plus className="h-4 w-4" /> Add Injection</Button>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Brand</TableHead><TableHead>Dose</TableHead><TableHead>Route</TableHead><TableHead>Stock</TableHead><TableHead className="text-right">Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow>
+                  <TableHead className="w-10"><Checkbox checked={fInjs.length > 0 && fInjs.every(i => injSel.has(i.id))} onCheckedChange={(c) => setInjSel(c ? new Set(fInjs.map(i => i.id)) : new Set())} /></TableHead>
+                  <TableHead>Name</TableHead><TableHead>Brand</TableHead><TableHead>Dose</TableHead><TableHead>Route</TableHead><TableHead>Stock</TableHead><TableHead className="text-right">Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                </TableRow></TableHeader>
                 <TableBody>
                   {fInjs.map(i => (
-                    <TableRow key={i.id}>
+                    <TableRow key={i.id} data-state={injSel.has(i.id) ? "selected" : undefined}>
+                      <TableCell><Checkbox checked={injSel.has(i.id)} onCheckedChange={(c) => { const n = new Set(injSel); c ? n.add(i.id) : n.delete(i.id); setInjSel(n); }} /></TableCell>
                       <TableCell className="font-medium">{i.name}</TableCell>
                       <TableCell className="text-sm">{i.brand ?? "—"}</TableCell>
                       <TableCell className="text-sm">{i.dose ?? "—"}</TableCell>
@@ -330,12 +381,13 @@ export default function Services() {
                       <TableCell className="text-right font-semibold">{fmtUSD(i.price_usd)}</TableCell>
                       <TableCell>{i.active ? <Badge variant="outline" className="bg-success/15 text-success border-success/30">Active</Badge> : <Badge variant="outline">Inactive</Badge>}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" onClick={() => setInjDlg(i)}><Pencil className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => delInj(i.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => setInjDlg(i)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => printInjBarcodes([i.id])} title="Print Barcode"><BarcodeIcon className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => delInj(i.id)} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!fInjs.length && <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">No injections yet</TableCell></TableRow>}
+                  {!fInjs.length && <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">No injections match your filters</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
