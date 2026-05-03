@@ -397,7 +397,17 @@ export default function POS() {
 
               <div className="space-y-1">
                 <Label className="text-xs flex items-center gap-1"><Stethoscope className="h-3 w-3" />Referrer Doctor</Label>
-                <Input value={referrer} onChange={e => setReferrer(e.target.value)} placeholder="Dr. name (optional)…" className="h-8" />
+                <Select value={referrer || "__none__"} onValueChange={v => setReferrer(v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-8"><SelectValue placeholder="Select doctor…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {doctors.map(d => (
+                      <SelectItem key={d.id} value={d.full_name}>
+                        {d.full_name}{d.specialization ? ` · ${d.specialization}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1">
