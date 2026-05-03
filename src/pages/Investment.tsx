@@ -221,7 +221,13 @@ export default function Investment() {
 
   // ===== Contribution CRUD =====
   const openNewC = (shareholderId?: string) => {
-    setCForm({ ...emptyContribution, shareholder_id: shareholderId || (shareholders[0]?.id ?? "") });
+    setCForm({
+      ...emptyContribution,
+      shareholder_id: shareholderId || (shareholders[0]?.id ?? ""),
+      allocations: shareholderId
+        ? [{ shareholder_id: shareholderId, share_percent: 100 }]
+        : [],
+    });
     setCOpen(true);
   };
   const openEditC = (c: any) => {
@@ -236,6 +242,9 @@ export default function Investment() {
       reference: c.reference ?? "",
       notes: c.notes ?? "",
       slip_url: c.slip_url ?? "",
+      expected_return_usd: "" as any,
+      return_date: "",
+      allocations: [{ shareholder_id: c.shareholder_id, share_percent: 100 }],
     });
     setCOpen(true);
   };
@@ -253,26 +262,59 @@ export default function Investment() {
     finally { setUploading(false); }
   };
   const submitC = async () => {
-    if (!cForm.shareholder_id) return toast.error("Select investor");
     const amt = Number(cForm.amount_usd);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    if (!cForm.investment_name?.trim()) return toast.error("Title is required");
+    if (!cForm.category) return toast.error("Select a category");
+
     const { data: u } = await supabase.auth.getUser();
-    const payload: any = {
-      shareholder_id: cForm.shareholder_id,
-      investment_name: cForm.investment_name || "Capital Amount Investment",
-      category: cForm.category || "Capital",
-      amount_usd: amt,
+    const baseNotes = cForm.notes || "";
+    const extraMeta: string[] = [];
+    if (cForm.expected_return_usd) extraMeta.push(`Expected Return: $${cForm.expected_return_usd}`);
+    if (cForm.return_date) extraMeta.push(`Return Date: ${cForm.return_date}`);
+    const finalNotes = [baseNotes, extraMeta.join(" • ")].filter(Boolean).join("\n");
+
+    // Edit mode → single update
+    if (cForm.id) {
+      const payload: any = {
+        shareholder_id: cForm.shareholder_id,
+        investment_name: cForm.investment_name.trim(),
+        category: cForm.category,
+        amount_usd: amt,
+        paid_on: cForm.paid_on,
+        payment_method: cForm.payment_method,
+        reference: cForm.reference || null,
+        notes: finalNotes || null,
+        slip_url: cForm.slip_url || null,
+      };
+      const { error } = await (supabase.from("shareholder_contributions" as any) as any).update(payload).eq("id", cForm.id);
+      if (error) return toast.error(error.message);
+      toast.success("Contribution updated");
+      setCOpen(false); load();
+      return;
+    }
+
+    // Create mode: split by allocations (or single shareholder)
+    const allocs = (cForm.allocations || []).filter(a => a.shareholder_id && Number(a.share_percent) > 0);
+    if (allocs.length === 0) return toast.error("Add at least one investor");
+    const totalPct = allocs.reduce((s, a) => s + Number(a.share_percent || 0), 0);
+    if (totalPct <= 0) return toast.error("Share % must be greater than 0");
+
+    const rows = allocs.map(a => ({
+      shareholder_id: a.shareholder_id,
+      investment_name: cForm.investment_name.trim(),
+      category: cForm.category,
+      amount_usd: +((amt * Number(a.share_percent)) / totalPct).toFixed(2),
       paid_on: cForm.paid_on,
       payment_method: cForm.payment_method,
       reference: cForm.reference || null,
-      notes: cForm.notes || null,
+      notes: finalNotes || null,
       slip_url: cForm.slip_url || null,
-    };
-    let error;
-    if (cForm.id) ({ error } = await (supabase.from("shareholder_contributions" as any) as any).update(payload).eq("id", cForm.id));
-    else { payload.created_by = u.user?.id ?? null; ({ error } = await (supabase.from("shareholder_contributions" as any) as any).insert(payload)); }
+      created_by: u.user?.id ?? null,
+    }));
+    const { error } = await (supabase.from("shareholder_contributions" as any) as any).insert(rows);
     if (error) return toast.error(error.message);
-    toast.success(cForm.id ? "Contribution updated" : "Contribution recorded");
+    toast.success(`Investment recorded for ${allocs.length} investor${allocs.length > 1 ? "s" : ""}`);
     setCOpen(false); load();
   };
   const confirmDeleteC = async () => {
