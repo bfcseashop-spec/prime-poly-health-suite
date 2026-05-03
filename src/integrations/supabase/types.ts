@@ -775,6 +775,8 @@ export type Database = {
       medicines: {
         Row: {
           barcode: string | null
+          box_barcode: string | null
+          box_cost_usd: number | null
           box_price_usd: number | null
           brand: string | null
           category: string | null
@@ -785,9 +787,13 @@ export type Database = {
           id: string
           low_stock_threshold: number
           name: string
+          packet_barcode: string | null
+          packet_cost_usd: number | null
           packet_price_usd: number | null
           price_usd: number
           stock: number
+          strip_barcode: string | null
+          strip_cost_usd: number | null
           strip_price_usd: number | null
           supplier: string | null
           unit: string | null
@@ -798,6 +804,8 @@ export type Database = {
         }
         Insert: {
           barcode?: string | null
+          box_barcode?: string | null
+          box_cost_usd?: number | null
           box_price_usd?: number | null
           brand?: string | null
           category?: string | null
@@ -808,9 +816,13 @@ export type Database = {
           id?: string
           low_stock_threshold?: number
           name: string
+          packet_barcode?: string | null
+          packet_cost_usd?: number | null
           packet_price_usd?: number | null
           price_usd?: number
           stock?: number
+          strip_barcode?: string | null
+          strip_cost_usd?: number | null
           strip_price_usd?: number | null
           supplier?: string | null
           unit?: string | null
@@ -821,6 +833,8 @@ export type Database = {
         }
         Update: {
           barcode?: string | null
+          box_barcode?: string | null
+          box_cost_usd?: number | null
           box_price_usd?: number | null
           brand?: string | null
           category?: string | null
@@ -831,9 +845,13 @@ export type Database = {
           id?: string
           low_stock_threshold?: number
           name?: string
+          packet_barcode?: string | null
+          packet_cost_usd?: number | null
           packet_price_usd?: number | null
           price_usd?: number
           stock?: number
+          strip_barcode?: string | null
+          strip_cost_usd?: number | null
           strip_price_usd?: number | null
           supplier?: string | null
           unit?: string | null
