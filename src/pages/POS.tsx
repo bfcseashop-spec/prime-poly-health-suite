@@ -281,12 +281,15 @@ export default function POS() {
     }
 
     toast.success(`${invoice} — ${status === "paid" ? "Paid" : status === "partial" ? `Partial • ${fmtUSD(remaining)} due` : `Due ${fmtUSD(remaining)}`}`);
-    printReceipt({
+    const inv = {
       invoice, items: cart, subtotal, discount: totalDiscount, total, paid, due: remaining, status,
       splits: validSplits, patient: patients.find(p => p.id === patientId), notes,
-    });
-    setCart([]); setDiscount(0); setPatientId(undefined); setInsuranceCard(null); setNotes("");
-    setSplits([{ id: crypto.randomUUID(), method: "cash", amount: 0 }]);
+      created_at: new Date(),
+    };
+    setLastInvoice(inv);
+    setPreviewOpen(true);
+    setCart([]); setDiscountType("none"); setDiscountValue(0); setPatientId(undefined); setInsuranceCard(null); setNotes("");
+    setSplits([{ id: crypto.randomUUID(), method: "cash", amount: 0 }]); setSplitMode(false); setAutoMethod("cash");
     load();
   };
 
