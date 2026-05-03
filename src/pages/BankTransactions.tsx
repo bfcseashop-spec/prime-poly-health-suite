@@ -15,7 +15,9 @@ import { fmtUSD, fmtKHR } from "@/lib/currency";
 import { toast } from "sonner";
 
 type Pay = { id: string; sale_id: string; amount_usd: number; payment_method: string; reference: string | null; paid_on: string };
+type Sale = { id: string; due_usd: number; total_usd: number; amount_paid_usd: number; status: string; invoice_no: string; patient_id: string | null; created_at: string; payment_method: string };
 type Manual = { id: string; txn_date: string; txn_type: string; bank_name: string; amount_usd: number; reference_no: string | null; description: string | null };
+type Patient = { id: string; full_name: string };
 
 const RANGES = [
   { value: "today", label: "Today" },
@@ -64,7 +66,8 @@ export default function BankTransactions() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [pays, setPays] = useState<Pay[]>([]);
-  const [sales, setSales] = useState<{ id: string; due_usd: number; created_at: string }[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [manuals, setManuals] = useState<Manual[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -73,14 +76,16 @@ export default function BankTransactions() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: p }, { data: s }, { data: m }] = await Promise.all([
+    const [{ data: p }, { data: s }, { data: m }, { data: pt }] = await Promise.all([
       supabase.from("invoice_payments" as any).select("id, sale_id, amount_usd, payment_method, reference, paid_on").limit(5000),
-      supabase.from("medicine_sales").select("id, due_usd, created_at, payment_method").limit(5000),
+      supabase.from("medicine_sales").select("id, due_usd, total_usd, amount_paid_usd, status, invoice_no, patient_id, created_at, payment_method").limit(5000),
       supabase.from("bank_transactions").select("*").limit(2000),
+      supabase.from("patients").select("id, full_name").limit(5000),
     ]);
     setPays((p as any) || []);
     setSales((s as any) || []);
     setManuals((m as any) || []);
+    setPatients((pt as any) || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
