@@ -256,6 +256,11 @@ export default function POS() {
       const m = meds.find(x => x.id === c.ref_id);
       if (m) await supabase.from("medicines").update({ stock: m.stock - c.quantity }).eq("id", c.ref_id!);
     }
+    // decrement injection stock
+    for (const c of cart.filter(x => x.item_type === "injection" && x.ref_id)) {
+      const inj = injections.find(x => x.id === c.ref_id);
+      if (inj) await supabase.from("injections" as any).update({ stock: Math.max(0, inj.stock - c.quantity) }).eq("id", c.ref_id!);
+    }
 
     if (insuranceCard && insuranceDiscount > 0) {
       await supabase.from("insurance_cards" as any).update({
