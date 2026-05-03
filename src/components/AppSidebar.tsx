@@ -10,13 +10,13 @@ type Item = { title: string; url: string; icon: any; roles?: AppRole[]; color?: 
 // Bright colors that pop on the dark teal sidebar bg
 const main: Item[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, color: "text-sky-300" },
+  { title: "POS / Billing", url: "/pos", icon: Receipt, color: "text-amber-300", roles: ["admin","pharmacist","receptionist","accountant"] },
   { title: "Patients", url: "/patients", icon: Users, color: "text-violet-300", roles: ["admin","doctor","nurse","receptionist","accountant"] },
   { title: "Doctor Management", url: "/doctors", icon: UserPlus, color: "text-emerald-300", roles: ["admin","receptionist","accountant"] },
   { title: "OPD Queue", url: "/opd", icon: Stethoscope, color: "text-teal-200", roles: ["admin","doctor","nurse","receptionist"] },
   { title: "IPD / Admissions", url: "/ipd", icon: BedDouble, color: "text-indigo-300", roles: ["admin","doctor","nurse","receptionist"] },
   { title: "Prescriptions", url: "/prescriptions", icon: FileText, color: "text-blue-300", roles: ["admin","doctor"] },
   { title: "Medicines", url: "/medicines", icon: PillBottle, color: "text-rose-300", roles: ["admin","pharmacist"] },
-  { title: "POS / Billing", url: "/pos", icon: Receipt, color: "text-amber-300", roles: ["admin","pharmacist","receptionist","accountant"] },
   { title: "Due Management", url: "/due-management", icon: CreditCard, color: "text-orange-300", roles: ["admin","accountant","receptionist","pharmacist"] },
   { title: "Invoice History", url: "/invoices", icon: History, color: "text-cyan-200", roles: ["admin","accountant","receptionist","pharmacist"] },
 ];
