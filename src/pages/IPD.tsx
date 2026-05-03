@@ -603,6 +603,85 @@ export default function IPD() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* TRANSFER HISTORY DIALOG */}
+      <Dialog open={!!historyFor} onOpenChange={(o) => !o && setHistoryFor(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HistoryIcon className="h-5 w-5" />Transfer History
+            </DialogTitle>
+          </DialogHeader>
+          {historyFor && (
+            <div className="space-y-4 py-2">
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="font-semibold">{historyFor.patients?.full_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {historyFor.admission_no} • Admitted {format(new Date(historyFor.admitted_at), "PP")}
+                </p>
+              </div>
+
+              {historyRows.length === 0 ? (
+                <div className="text-center py-10 text-sm text-muted-foreground border rounded-lg">
+                  No transfers yet for this admission.
+                </div>
+              ) : (
+                <div className="relative pl-6 max-h-[55vh] overflow-y-auto">
+                  <div className="absolute left-2 top-1 bottom-1 w-px bg-border" />
+                  <div className="space-y-4">
+                    {historyRows.map((t) => (
+                      <div key={t.id} className="relative">
+                        <div className="absolute -left-[18px] top-2 h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
+                        <div className="rounded-lg border bg-card p-3 shadow-soft">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <Badge variant="outline" className="font-mono">
+                                Room {t.from_room_no || "—"}{t.from_bed_no ? ` / ${t.from_bed_no}` : ""}
+                              </Badge>
+                              <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Badge className="font-mono">
+                                Room {t.to_room_no || "—"}{t.to_bed_no ? ` / ${t.to_bed_no}` : ""}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {format(new Date(t.transferred_at), "PPp")}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <Stethoscope className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-muted-foreground">Doctor:</span>
+                              <span className="font-medium">
+                                {t.from_doctor_name || "—"}
+                                {t.to_doctor_name && t.to_doctor_name !== t.from_doctor_name && (
+                                  <> → <span className="text-primary">{t.to_doctor_name}</span></>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          {t.reason && (
+                            <p className="text-xs mt-2 p-2 rounded bg-muted/50">
+                              <span className="font-semibold">Reason:</span> {t.reason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryFor(null)}>Close</Button>
+            {historyFor && (
+              <Button onClick={() => { const a = historyFor; setHistoryFor(null); openTransfer(a); }} className="clinic-gradient text-primary-foreground">
+                <ArrowRightLeft className="h-4 w-4 mr-2" />New Transfer
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
