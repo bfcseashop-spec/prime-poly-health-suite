@@ -1289,78 +1289,177 @@ export default function Investment() {
           </div>
 
           <div className="px-6 py-5 space-y-4 bg-background overflow-y-auto">
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">
-                Investment <span className="text-destructive">*</span>
-              </Label>
-              <Select value={recForm.investment_name} onValueChange={v => setRecForm({ ...recForm, investment_name: v })}>
-                <SelectTrigger className="h-11 border-2 focus:border-primary"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Array.from(new Set([
-                    "Capital Amount Investment",
-                    ...contributions.map((c: any) => c.investment_name).filter(Boolean),
-                  ])).map(inv => {
-                    const total = contributions
-                      .filter((c: any) => (c.investment_name || "Capital Amount Investment") === inv)
-                      .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
-                    return (
-                      <SelectItem key={inv} value={inv}>{inv} ({fmtUSD(total)})</SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+            {(() => {
+              const invName = recForm.investment_name || "Capital Amount Investment";
+              const invRow = investments.find((i: any) => i.name === invName);
+              const invTotal = invRow ? Number(invRow.total_amount_usd || 0) : 0;
+              const invPaid = contributions
+                .filter((c: any) => (c.investment_name || "Capital Amount Investment") === invName)
+                .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
+              const invDue = Math.max(0, invTotal - invPaid);
 
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">
-                Investor <span className="text-destructive">*</span>
-              </Label>
-              <Select value={recForm.shareholder_id} onValueChange={v => setRecForm({ ...recForm, shareholder_id: v })}>
-                <SelectTrigger className="h-11 border-2 focus:border-primary">
-                  <SelectValue placeholder="Select investor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {shareholders.map(s => (<SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
+              const sh = shareholders.find(s => s.id === recForm.shareholder_id);
+              const sharePct = sh ? Number(sh.share_percent || 0) : 0;
+              const shCommitted = invTotal > 0 && sharePct > 0
+                ? +((invTotal * sharePct) / 100).toFixed(2)
+                : Number(sh?.committed_capital_usd || 0);
+              const shPaid = contributions
+                .filter((c: any) => c.shareholder_id === sh?.id && (c.investment_name || "Capital Amount Investment") === invName)
+                .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
+              const shDue = Math.max(0, shCommitted - shPaid);
 
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Category</Label>
-              <Select value={recForm.category} onValueChange={v => setRecForm({ ...recForm, category: v })}>
-                <SelectTrigger className="h-11 border-2 focus:border-primary">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+              return (
+                <>
+                  {/* Investment selector */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">
+                      Investment <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={recForm.investment_name}
+                      onValueChange={v => setRecForm({ ...recForm, investment_name: v })}
+                    >
+                      <SelectTrigger className="h-11 border-2 focus:border-primary"><SelectValue placeholder="Select investment" /></SelectTrigger>
+                      <SelectContent>
+                        {investments.length === 0 && (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">No investments — add one first</div>
+                        )}
+                        {investments.map((inv: any) => {
+                          const t = Number(inv.total_amount_usd || 0);
+                          return (
+                            <SelectItem key={inv.id} value={inv.name}>
+                              {inv.name} — {fmtUSD(t)}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  Amount ($) <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="number" min={0} step="0.01"
-                  className="h-11 border-2 focus-visible:border-primary"
-                  value={recForm.amount_usd}
-                  onChange={e => setRecForm({ ...recForm, amount_usd: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  Date <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="date"
-                  className="h-11 border-2 focus-visible:border-primary"
-                  value={recForm.paid_on}
-                  onChange={e => setRecForm({ ...recForm, paid_on: e.target.value })}
-                />
-              </div>
-            </div>
+                    {invRow && (
+                      <div className="mt-2 rounded-lg border-2 border-primary/20 bg-primary/5 p-3 space-y-2">
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Total</p>
+                            <p className="text-sm font-bold tabular-nums">{fmtUSD(invTotal)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Paid</p>
+                            <p className="text-sm font-bold text-success tabular-nums">{fmtUSD(invPaid)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Due</p>
+                            <p className="text-sm font-bold text-warning tabular-nums">{fmtUSD(invDue)}</p>
+                          </div>
+                        </div>
+                        <Progress value={invTotal > 0 ? Math.min(100, (invPaid / invTotal) * 100) : 0} className="h-1.5" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Investor */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">
+                      Investor <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={recForm.shareholder_id}
+                      onValueChange={v => {
+                        const picked = shareholders.find(x => x.id === v);
+                        const pct = picked ? Number(picked.share_percent || 0) : 0;
+                        const commit = invTotal > 0 && pct > 0 ? +((invTotal * pct) / 100).toFixed(2) : Number(picked?.committed_capital_usd || 0);
+                        const paidSoFar = contributions
+                          .filter((c: any) => c.shareholder_id === v && (c.investment_name || "Capital Amount Investment") === invName)
+                          .reduce((s: number, c: any) => s + Number(c.amount_usd || 0), 0);
+                        const due = Math.max(0, commit - paidSoFar);
+                        setRecForm({ ...recForm, shareholder_id: v, amount_usd: due > 0 ? String(due) : recForm.amount_usd });
+                      }}
+                    >
+                      <SelectTrigger className="h-11 border-2 focus:border-primary">
+                        <SelectValue placeholder="Select investor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shareholders.map(s => {
+                          const pct = Number(s.share_percent || 0);
+                          return (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.full_name} · {pct}%
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+
+                    {sh && (
+                      <div className="mt-2 rounded-lg border bg-muted/30 p-3 space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Share</span>
+                          <Badge variant="outline" className="text-[10px]">{sharePct}%</Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Committed</span>
+                          <span className="font-semibold tabular-nums">{fmtUSD(shCommitted)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Already paid</span>
+                          <span className="font-semibold text-success tabular-nums">{fmtUSD(shPaid)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs pt-1 border-t">
+                          <span className="text-muted-foreground font-medium">Remaining due</span>
+                          <span className="font-bold text-warning tabular-nums">{fmtUSD(shDue)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Category */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Category</Label>
+                    <Select value={recForm.category} onValueChange={v => setRecForm({ ...recForm, category: v })}>
+                      <SelectTrigger className="h-11 border-2 focus:border-primary">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium flex items-center justify-between">
+                        <span>Amount ($) <span className="text-destructive">*</span></span>
+                        {sh && shDue > 0 && (
+                          <button
+                            type="button"
+                            className="text-[10px] text-primary hover:underline font-normal"
+                            onClick={() => setRecForm({ ...recForm, amount_usd: String(shDue) })}
+                          >
+                            Use due {fmtUSD(shDue)}
+                          </button>
+                        )}
+                      </Label>
+                      <Input
+                        type="number" min={0} step="0.01"
+                        className="h-11 border-2 focus-visible:border-primary"
+                        value={recForm.amount_usd}
+                        onChange={e => setRecForm({ ...recForm, amount_usd: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium">
+                        Date <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        className="h-11 border-2 focus-visible:border-primary"
+                        value={recForm.paid_on}
+                        onChange={e => setRecForm({ ...recForm, paid_on: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
 
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Images</Label>
