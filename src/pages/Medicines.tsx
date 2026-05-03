@@ -21,7 +21,9 @@ const empty = {
   name: "", generic_name: "", brand: "", category: "", supplier: "", barcode: "",
   box_barcode: "", packet_barcode: "", strip_barcode: "",
   unit: "Pcs",
+  purchase_unit: "Pcs", // Pcs | Strip | Packet | Box
   units_per_box: "", units_per_packet: "", units_per_strip: "",
+  purchase_pack_price: "", // price for the selected purchase pack
   cost_price_usd: "", price_usd: "",
   box_cost_usd: "", packet_cost_usd: "", strip_cost_usd: "",
   box_price_usd: "", packet_price_usd: "", strip_price_usd: "",
