@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import {
   BedDouble, UserPlus, LogOut, Users, Activity, Stethoscope, Search,
   CircleCheck, CircleX, Wrench, Crown, Heart, ArrowRightLeft,
+  History as HistoryIcon,
 } from "lucide-react";
 
 const ROOM_TYPE_META: Record<string, { label: string; color: string; icon: any }> = {
@@ -44,7 +45,19 @@ export default function IPD() {
   const [dischargeFor, setDischargeFor] = useState<any | null>(null);
   const [transferFor, setTransferFor] = useState<any | null>(null);
   const [transferForm, setTransferForm] = useState<{ room_id: string; bed_no: string; doctor_name: string; reason: string }>({ room_id: "", bed_no: "", doctor_name: "", reason: "" });
+  const [historyFor, setHistoryFor] = useState<any | null>(null);
+  const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [preselectRoom, setPreselectRoom] = useState<string>("");
+
+  const openHistory = async (adm: any) => {
+    setHistoryFor(adm);
+    setHistoryRows([]);
+    const { data } = await (supabase.from("admission_transfers" as any) as any)
+      .select("*")
+      .eq("admission_id", adm.id)
+      .order("transferred_at", { ascending: false });
+    setHistoryRows(data ?? []);
+  };
 
   const [form, setForm] = useState<any>({
     patient_id: "", room_id: "", doctor_name: "", admission_type: "general",
@@ -143,20 +156,33 @@ export default function IPD() {
     if (!transferForm.room_id) return toast.error("Select a destination room");
     if (transferForm.room_id === transferFor.room_id) return toast.error("Choose a different room");
     const newRoom = rooms.find(r => r.id === transferForm.room_id);
-    const prevNote = transferFor.notes ? `${transferFor.notes}\n` : "";
-    const transferLog = `[Transfer ${format(new Date(), "PPp")}] ${transferFor.rooms?.room_no || "—"} → ${newRoom?.room_no}${transferForm.reason ? ` • ${transferForm.reason}` : ""}`;
+    const { data: userData } = await supabase.auth.getUser();
     const { error } = await (supabase.from("admissions" as any) as any)
       .update({
         room_id: transferForm.room_id,
         bed_no: transferForm.bed_no || null,
         doctor_name: transferForm.doctor_name || null,
         daily_rate_usd: newRoom?.daily_rate_usd ?? transferFor.daily_rate_usd,
-        notes: prevNote + transferLog,
       })
       .eq("id", transferFor.id);
     if (error) return toast.error(error.message);
+    await (supabase.from("admission_transfers" as any) as any).insert({
+      admission_id: transferFor.id,
+      patient_id: transferFor.patient_id,
+      from_room_id: transferFor.room_id,
+      from_room_no: transferFor.rooms?.room_no || null,
+      from_bed_no: transferFor.bed_no || null,
+      to_room_id: transferForm.room_id,
+      to_room_no: newRoom?.room_no || null,
+      to_bed_no: transferForm.bed_no || null,
+      from_doctor_name: transferFor.doctor_name || null,
+      to_doctor_name: transferForm.doctor_name || null,
+      reason: transferForm.reason || null,
+      transferred_by: userData.user?.id ?? null,
+    });
     toast.success("Patient transferred");
     setTransferFor(null);
+    setHistoryFor(null);
     load();
   };
 
@@ -352,6 +378,9 @@ export default function IPD() {
                         <TableCell className="text-right font-semibold">{fmtUSD(charges)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1.5 justify-end">
+                            <Button size="sm" variant="outline" onClick={() => openHistory(a)} title="Transfer history">
+                              <HistoryIcon className="h-3 w-3" />
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => openTransfer(a)}>
                               <ArrowRightLeft className="h-3 w-3 mr-1" />Transfer
                             </Button>
@@ -571,6 +600,85 @@ export default function IPD() {
             <Button onClick={submitTransfer} className="clinic-gradient text-primary-foreground">
               <ArrowRightLeft className="h-4 w-4 mr-2" />Confirm Transfer
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* TRANSFER HISTORY DIALOG */}
+      <Dialog open={!!historyFor} onOpenChange={(o) => !o && setHistoryFor(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HistoryIcon className="h-5 w-5" />Transfer History
+            </DialogTitle>
+          </DialogHeader>
+          {historyFor && (
+            <div className="space-y-4 py-2">
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="font-semibold">{historyFor.patients?.full_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {historyFor.admission_no} • Admitted {format(new Date(historyFor.admitted_at), "PP")}
+                </p>
+              </div>
+
+              {historyRows.length === 0 ? (
+                <div className="text-center py-10 text-sm text-muted-foreground border rounded-lg">
+                  No transfers yet for this admission.
+                </div>
+              ) : (
+                <div className="relative pl-6 max-h-[55vh] overflow-y-auto">
+                  <div className="absolute left-2 top-1 bottom-1 w-px bg-border" />
+                  <div className="space-y-4">
+                    {historyRows.map((t) => (
+                      <div key={t.id} className="relative">
+                        <div className="absolute -left-[18px] top-2 h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
+                        <div className="rounded-lg border bg-card p-3 shadow-soft">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <Badge variant="outline" className="font-mono">
+                                Room {t.from_room_no || "—"}{t.from_bed_no ? ` / ${t.from_bed_no}` : ""}
+                              </Badge>
+                              <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Badge className="font-mono">
+                                Room {t.to_room_no || "—"}{t.to_bed_no ? ` / ${t.to_bed_no}` : ""}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {format(new Date(t.transferred_at), "PPp")}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <Stethoscope className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-muted-foreground">Doctor:</span>
+                              <span className="font-medium">
+                                {t.from_doctor_name || "—"}
+                                {t.to_doctor_name && t.to_doctor_name !== t.from_doctor_name && (
+                                  <> → <span className="text-primary">{t.to_doctor_name}</span></>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          {t.reason && (
+                            <p className="text-xs mt-2 p-2 rounded bg-muted/50">
+                              <span className="font-semibold">Reason:</span> {t.reason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryFor(null)}>Close</Button>
+            {historyFor && (
+              <Button onClick={() => { const a = historyFor; setHistoryFor(null); openTransfer(a); }} className="clinic-gradient text-primary-foreground">
+                <ArrowRightLeft className="h-4 w-4 mr-2" />New Transfer
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

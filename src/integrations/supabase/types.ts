@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      admission_transfers: {
+        Row: {
+          admission_id: string
+          created_at: string
+          from_bed_no: string | null
+          from_doctor_name: string | null
+          from_room_id: string | null
+          from_room_no: string | null
+          id: string
+          patient_id: string
+          reason: string | null
+          to_bed_no: string | null
+          to_doctor_name: string | null
+          to_room_id: string | null
+          to_room_no: string | null
+          transferred_at: string
+          transferred_by: string | null
+        }
+        Insert: {
+          admission_id: string
+          created_at?: string
+          from_bed_no?: string | null
+          from_doctor_name?: string | null
+          from_room_id?: string | null
+          from_room_no?: string | null
+          id?: string
+          patient_id: string
+          reason?: string | null
+          to_bed_no?: string | null
+          to_doctor_name?: string | null
+          to_room_id?: string | null
+          to_room_no?: string | null
+          transferred_at?: string
+          transferred_by?: string | null
+        }
+        Update: {
+          admission_id?: string
+          created_at?: string
+          from_bed_no?: string | null
+          from_doctor_name?: string | null
+          from_room_id?: string | null
+          from_room_no?: string | null
+          id?: string
+          patient_id?: string
+          reason?: string | null
+          to_bed_no?: string | null
+          to_doctor_name?: string | null
+          to_room_id?: string | null
+          to_room_no?: string | null
+          transferred_at?: string
+          transferred_by?: string | null
+        }
+        Relationships: []
+      }
       admissions: {
         Row: {
           admission_no: string
