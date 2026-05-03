@@ -520,9 +520,6 @@ export default function Investment() {
           <Button variant="outline" onClick={() => setCatMgrOpen(true)}>
             <Tag className="h-4 w-4 mr-1" />Manage Categories
           </Button>
-          <Button onClick={() => openNewC()} className="clinic-gradient text-primary-foreground">
-            <Plus className="h-4 w-4 mr-1" />Add Investment
-          </Button>
         </div>
       </div>
 
