@@ -213,7 +213,7 @@ export default function Staff() {
           <TabsTrigger value="all">All ({rows.length})</TabsTrigger>
           {POSITIONS.map(p => {
             const count = rows.filter(r => r.position === p.value).length;
-            if (count === 0 && p.value !== "doctor" && p.value !== "lab_technician") return null;
+            if (count === 0 && p.value !== "nurse" && p.value !== "lab_technician") return null;
             return (
               <TabsTrigger key={p.value} value={p.value}>
                 <p.icon className="h-3.5 w-3.5 mr-1.5" />{p.label} ({count})
