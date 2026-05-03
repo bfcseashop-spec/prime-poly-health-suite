@@ -15,7 +15,9 @@ import { fmtUSD, fmtKHR } from "@/lib/currency";
 import { toast } from "sonner";
 
 type Pay = { id: string; sale_id: string; amount_usd: number; payment_method: string; reference: string | null; paid_on: string };
+type Sale = { id: string; due_usd: number; total_usd: number; amount_paid_usd: number; status: string; invoice_no: string; patient_id: string | null; created_at: string; payment_method: string };
 type Manual = { id: string; txn_date: string; txn_type: string; bank_name: string; amount_usd: number; reference_no: string | null; description: string | null };
+type Patient = { id: string; full_name: string };
 
 const RANGES = [
   { value: "today", label: "Today" },
@@ -64,7 +66,8 @@ export default function BankTransactions() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [pays, setPays] = useState<Pay[]>([]);
-  const [sales, setSales] = useState<{ id: string; due_usd: number; created_at: string }[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [manuals, setManuals] = useState<Manual[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -73,14 +76,16 @@ export default function BankTransactions() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: p }, { data: s }, { data: m }] = await Promise.all([
+    const [{ data: p }, { data: s }, { data: m }, { data: pt }] = await Promise.all([
       supabase.from("invoice_payments" as any).select("id, sale_id, amount_usd, payment_method, reference, paid_on").limit(5000),
-      supabase.from("medicine_sales").select("id, due_usd, created_at, payment_method").limit(5000),
+      supabase.from("medicine_sales").select("id, due_usd, total_usd, amount_paid_usd, status, invoice_no, patient_id, created_at, payment_method").limit(5000),
       supabase.from("bank_transactions").select("*").limit(2000),
+      supabase.from("patients").select("id, full_name").limit(5000),
     ]);
     setPays((p as any) || []);
     setSales((s as any) || []);
     setManuals((m as any) || []);
+    setPatients((pt as any) || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -300,64 +305,115 @@ export default function BankTransactions() {
         pays={filteredPays}
         sales={filteredSales}
         manuals={filteredManuals}
+        patients={patients}
       />
     </div>
   );
 }
 
-function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals }: {
+function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals, patients }: {
   methodKey: string | null;
   onClose: () => void;
   from: string;
   to: string;
   pays: Pay[];
-  sales: { id: string; due_usd: number; created_at: string; payment_method?: string }[];
+  sales: Sale[];
   manuals: Manual[];
+  patients: Patient[];
 }) {
   const open = !!methodKey;
-  type Row = { date: string; method: string; amount: number; reference: string | null; source: string; note?: string | null };
-  const rows: Row[] = useMemo(() => {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "amount_desc" | "amount_asc">("date_desc");
+
+  useEffect(() => { if (open) { setSearch(""); setStatusFilter("all"); setSortBy("date_desc"); } }, [open, methodKey]);
+
+  const patientMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    patients.forEach(p => { m[p.id] = p.full_name; });
+    return m;
+  }, [patients]);
+
+  const prettyMethod = (m: string) => m.split(/[\s_]+/).map(w => w[0]?.toUpperCase() + w.slice(1)).join(" ");
+  const norm = (s: string) => (s || "").toLowerCase().replace(/\s+/g, "_");
+
+  type Row = {
+    id: string;
+    bill_no: string;
+    patient: string;
+    amount: number;
+    method: string;
+    status: "paid" | "pending" | "manual";
+    date: string;
+  };
+
+  const allRows: Row[] = useMemo(() => {
     if (!methodKey) return [];
     const list: Row[] = [];
     if (methodKey === "due") {
       sales.filter(s => Number(s.due_usd || 0) > 0).forEach(s => list.push({
-        date: (s.created_at || "").slice(0, 10),
-        method: "due",
+        id: s.id,
+        bill_no: s.invoice_no || s.id.slice(0, 8),
+        patient: s.patient_id ? (patientMap[s.patient_id] || "—") : "Walk-in",
         amount: Number(s.due_usd || 0),
-        reference: s.id.slice(0, 8),
-        source: "Sale outstanding",
+        method: "due",
+        status: "pending",
+        date: (s.created_at || "").slice(0, 10),
       }));
     } else {
-      pays.filter(p => (p.payment_method || "cash").toLowerCase().replace(/\s+/g, "_") === methodKey).forEach(p => list.push({
-        date: p.paid_on,
-        method: p.payment_method,
-        amount: Number(p.amount_usd || 0),
-        reference: p.reference,
-        source: "Invoice payment",
-      }));
-      manuals.filter(m => (m.bank_name || "").toLowerCase().replace(/\s+/g, "_") === methodKey).forEach(m => list.push({
-        date: m.txn_date,
-        method: m.bank_name,
-        amount: ((m.txn_type === "withdrawal" || m.txn_type === "fee") ? -1 : 1) * Number(m.amount_usd || 0),
-        reference: m.reference_no,
-        source: `Manual ${m.txn_type}`,
-        note: m.description,
-      }));
+      // Invoice payments: link to sale for bill_no & patient
+      const saleMap: Record<string, Sale> = {};
+      sales.forEach(s => { saleMap[s.id] = s; });
+      pays.filter(p => norm(p.payment_method || "cash") === methodKey).forEach(p => {
+        const s = saleMap[p.sale_id];
+        list.push({
+          id: p.id,
+          bill_no: s?.invoice_no || p.sale_id.slice(0, 8),
+          patient: s?.patient_id ? (patientMap[s.patient_id] || "—") : "Walk-in",
+          amount: Number(p.amount_usd || 0),
+          method: p.payment_method,
+          status: s && Number(s.due_usd || 0) > 0 ? "pending" : "paid",
+          date: p.paid_on,
+        });
+      });
+      manuals.filter(m => norm(m.bank_name || "") === methodKey).forEach(m => {
+        const sign = (m.txn_type === "withdrawal" || m.txn_type === "fee") ? -1 : 1;
+        list.push({
+          id: m.id,
+          bill_no: m.reference_no || `MAN-${m.id.slice(0, 6)}`,
+          patient: m.description || `Manual ${m.txn_type}`,
+          amount: sign * Number(m.amount_usd || 0),
+          method: m.bank_name,
+          status: "manual",
+          date: m.txn_date,
+        });
+      });
     }
-    return list.sort((a, b) => b.date.localeCompare(a.date));
-  }, [methodKey, pays, sales, manuals]);
+    return list;
+  }, [methodKey, pays, sales, manuals, patientMap]);
 
-  const grouped = useMemo(() => {
-    const m: Record<string, Row[]> = {};
-    rows.forEach(r => { (m[r.date] ||= []).push(r); });
-    return Object.entries(m).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [rows]);
+  const filtered = useMemo(() => {
+    let rs = allRows;
+    if (statusFilter !== "all") rs = rs.filter(r => r.status === statusFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      rs = rs.filter(r => r.bill_no.toLowerCase().includes(q) || r.patient.toLowerCase().includes(q) || r.method.toLowerCase().includes(q) || r.date.includes(q));
+    }
+    const sorted = [...rs];
+    sorted.sort((a, b) => {
+      if (sortBy === "date_desc") return b.date.localeCompare(a.date);
+      if (sortBy === "date_asc") return a.date.localeCompare(b.date);
+      if (sortBy === "amount_desc") return b.amount - a.amount;
+      return a.amount - b.amount;
+    });
+    return sorted;
+  }, [allRows, statusFilter, search, sortBy]);
 
-  const total = rows.reduce((a, r) => a + r.amount, 0);
+  const total = filtered.reduce((a, r) => a + r.amount, 0);
 
   const exportCSV = () => {
-    const out = [["Date", "Method", "Amount USD", "Reference", "Source", "Note"]];
-    rows.forEach(r => out.push([r.date, r.method, String(r.amount), r.reference || "", r.source, r.note || ""]));
+    const out = [["Bill No", "Patient", "Amount USD", "Payment Method", "Status", "Date"]];
+    filtered.forEach(r => out.push([r.bill_no, r.patient, String(r.amount), r.method, r.status, r.date]));
     const csv = out.map(r => r.map(c => `"${(c ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -365,58 +421,84 @@ function HistoryDialog({ methodKey, onClose, from, to, pays, sales, manuals }: {
     URL.revokeObjectURL(url);
   };
 
-  const prettyMethod = (m: string) => m.split(/[\s_]+/).map(w => w[0]?.toUpperCase() + w.slice(1)).join(" ");
+  const methodBadge = (m: string) => {
+    const k = norm(m);
+    const col = palette[colorKey(k)];
+    return <Badge variant="outline" className={`${col.text} ${col.border}`}>{prettyMethod(m)}</Badge>;
+  };
+  const statusBadge = (s: Row["status"]) => {
+    if (s === "paid") return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border border-emerald-200">Paid</Badge>;
+    if (s === "pending") return <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border border-rose-200">Pending</Badge>;
+    return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border border-slate-200">Manual</Badge>;
+  };
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-3">
-            <span>{methodKey ? prettyMethod(methodKey) : ""} — Transaction History</span>
+          <DialogTitle className="flex items-center justify-between gap-3 flex-wrap">
+            <span className="flex items-center gap-2">
+              <span className="px-2 py-1 rounded bg-violet-100 text-violet-700 text-sm">💳 Bill Collections</span>
+              <Badge variant="secondary">{filtered.length}</Badge>
+            </span>
             <Badge variant="outline">{from} → {to}</Badge>
           </DialogTitle>
         </DialogHeader>
-        <div className="flex items-center justify-between text-sm">
-          <div className="text-muted-foreground">{rows.length} transaction{rows.length === 1 ? "" : "s"}</div>
-          <div className="font-semibold">Total: <span className="text-primary">{fmtUSD(total)}</span></div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={v => setSortBy(v as any)}>
+            <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date_desc">Newest first</SelectItem>
+              <SelectItem value="date_asc">Oldest first</SelectItem>
+              <SelectItem value="amount_desc">Amount: high → low</SelectItem>
+              <SelectItem value="amount_asc">Amount: low → high</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input placeholder="Search bill, patient, date…" value={search} onChange={e => setSearch(e.target.value)} className="flex-1 min-w-[200px] h-9" />
+          <div className="ml-auto text-sm font-semibold">Total: <span className="text-primary">{fmtUSD(total)}</span></div>
         </div>
-        <ScrollArea className="h-[60vh] border rounded-md">
-          {grouped.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">No transactions for this method in the selected range.</div>
-          ) : grouped.map(([date, items]) => {
-            const sub = items.reduce((a, r) => a + r.amount, 0);
-            return (
-              <div key={date} className="border-b last:border-b-0">
-                <div className="flex items-center justify-between px-4 py-2 bg-muted/40 sticky top-0">
-                  <div className="font-medium text-sm">{date}</div>
-                  <div className="text-sm font-semibold">{fmtUSD(sub)} <span className="text-xs text-muted-foreground font-normal">({items.length})</span></div>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-32">Source</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Note</TableHead>
-                      <TableHead className="text-right w-32">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map((r, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="text-xs">{r.source}</TableCell>
-                        <TableCell className="text-xs">{r.reference || "—"}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-[260px] truncate">{r.note || "—"}</TableCell>
-                        <TableCell className={`text-right font-semibold ${r.amount < 0 ? "text-red-600" : ""}`}>{fmtUSD(r.amount)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            );
-          })}
+
+        <ScrollArea className="h-[58vh] border rounded-md">
+          <Table>
+            <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow>
+                <TableHead>Bill No</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Payment Method</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No transactions match your filters.</TableCell></TableRow>
+              ) : filtered.map(r => (
+                <TableRow key={r.id}>
+                  <TableCell className="text-primary font-medium text-xs">{r.bill_no}</TableCell>
+                  <TableCell>{r.patient}</TableCell>
+                  <TableCell className={`text-right font-semibold ${r.amount < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtUSD(r.amount)}</TableCell>
+                  <TableCell>{methodBadge(r.method)}</TableCell>
+                  <TableCell>{statusBadge(r.status)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{r.date}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </ScrollArea>
+
         <DialogFooter>
-          <Button variant="outline" onClick={exportCSV} disabled={rows.length === 0}>Export CSV</Button>
+          <Button variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>Export CSV</Button>
           <Button onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
