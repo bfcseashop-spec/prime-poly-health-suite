@@ -393,6 +393,11 @@ export default function POS() {
               </div>
 
               <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1"><Stethoscope className="h-3 w-3" />Referrer Doctor</Label>
+                <Input value={referrer} onChange={e => setReferrer(e.target.value)} placeholder="Dr. name (optional)…" className="h-8" />
+              </div>
+
+              <div className="space-y-1">
                 <Label className="text-xs">Insurance Card</Label>
                 {insuranceCard ? (
                   <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-success/10 border border-success/30 text-xs">
