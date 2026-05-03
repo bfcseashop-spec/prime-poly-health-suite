@@ -381,6 +381,16 @@ export default function Investment() {
     });
     setCOpen(true);
   };
+  const openEditInvestment = (inv: any) => {
+    setCForm({
+      ...emptyContribution,
+      id: inv.id,
+      investment_name: inv.name,
+      amount_usd: inv.total_amount_usd ?? "",
+      notes: inv.notes ?? "",
+    });
+    setCOpen(true);
+  };
   const handleSlipUpload = async (file: File) => {
     setUploading(true);
     try {
