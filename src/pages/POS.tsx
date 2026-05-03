@@ -13,15 +13,18 @@ import { toast } from "sonner";
 import { fmtUSD, fmtBoth } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
 
+type ItemType = "medicine" | "consultation" | "xray" | "lab" | "service" | "injection" | "package";
+
 type CartItem = {
   key: string;
-  item_type: "medicine" | "consultation" | "xray" | "lab" | "service";
+  item_type: ItemType;
   ref_id?: string | null;
   name: string;
   description?: string | null;
   price_usd: number;
   quantity: number;
-  max?: number; // stock for medicines
+  max?: number; // stock for medicines/injections
+  package_id?: string | null; // links package child rows to parent
 };
 
 type SplitPayment = { id: string; method: string; amount: number; reference?: string };
@@ -36,6 +39,8 @@ const PAYMENTS = [
 
 const CAT_META: Record<string, { label: string; icon: any; color: string }> = {
   medicine: { label: "Medicines", icon: Pill, color: "text-emerald-600 bg-emerald-50" },
+  injection: { label: "Injections", icon: Syringe, color: "text-cyan-600 bg-cyan-50" },
+  package: { label: "Packages", icon: Layers, color: "text-indigo-600 bg-indigo-50" },
   consultation: { label: "Consultation", icon: Stethoscope, color: "text-blue-600 bg-blue-50" },
   xray: { label: "X-Ray", icon: ScanLine, color: "text-purple-600 bg-purple-50" },
   lab: { label: "Lab Tests", icon: FlaskConical, color: "text-amber-600 bg-amber-50" },
