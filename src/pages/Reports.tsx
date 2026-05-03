@@ -107,9 +107,9 @@ export default function Reports() {
         supabase.from("opd_visits").select("*, patients(full_name)").gte("visit_date", fromDate).lte("visit_date", toDate),
         supabase.from("patients").select("*").gte("created_at", fromISO).lte("created_at", toISO),
         supabase.from("medicines").select("*"),
-        supabase.from("lab_orders" as any).select("*").gte("created_at", fromISO).lte("created_at", toISO).then((r: any) => r).catch(() => ({ data: [] })),
-        supabase.from("xray_orders" as any).select("*").gte("created_at", fromISO).lte("created_at", toISO).then((r: any) => r).catch(() => ({ data: [] })),
-        supabase.from("invoices" as any).select("*, patients(full_name, patient_code)").gte("created_at", fromISO).lte("created_at", toISO).order("created_at", { ascending: false }).then((r: any) => r).catch(() => ({ data: [] })),
+        (supabase.from("lab_orders" as any).select("*").gte("created_at", fromISO).lte("created_at", toISO) as any).then((r: any) => r, () => ({ data: [] })),
+        (supabase.from("xray_orders" as any).select("*").gte("created_at", fromISO).lte("created_at", toISO) as any).then((r: any) => r, () => ({ data: [] })),
+        (supabase.from("invoices" as any).select("*, patients(full_name, patient_code)").gte("created_at", fromISO).lte("created_at", toISO).order("created_at", { ascending: false }) as any).then((r: any) => r, () => ({ data: [] })),
       ];
 
       const [salesR, expR, salR, opdR, patR, medR, labR, xrR, invR] = await Promise.all(queries);
