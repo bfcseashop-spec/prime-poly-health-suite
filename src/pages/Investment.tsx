@@ -746,14 +746,6 @@ export default function Investment() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-1">
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => openCapitalEdit(s)}>
-                        <Pencil className="h-3.5 w-3.5 mr-1" />Edit Capital
-                      </Button>
-                      <Button size="sm" className="flex-1 clinic-gradient text-primary-foreground" onClick={() => openRecord(s.id)}>
-                        <Plus className="h-3.5 w-3.5 mr-1" />Add Payment
-                      </Button>
-                    </div>
                   </CardContent>
                 </Card>
               );
