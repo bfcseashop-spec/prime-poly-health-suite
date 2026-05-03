@@ -57,6 +57,7 @@ export default function POS() {
   const [packages, setPackages] = useState<any[]>([]);
   const [packageItems, setPackageItems] = useState<Record<string, any[]>>({});
   const [patients, setPatients] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("medicine");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -77,19 +78,21 @@ export default function POS() {
   const [lastInvoice, setLastInvoice] = useState<any>(null);
 
   const load = async () => {
-    const [m, s, p, inj, pkg, pkgI] = await Promise.all([
+    const [m, s, p, inj, pkg, pkgI, doc] = await Promise.all([
       supabase.from("medicines").select("*").order("name"),
       supabase.from("service_catalog" as any).select("*").eq("active", true).order("name"),
       supabase.from("patients").select("id, full_name, patient_code, gender").order("created_at", { ascending: false }).limit(200),
       supabase.from("injections" as any).select("*").eq("active", true).order("name"),
       supabase.from("health_packages" as any).select("*").eq("active", true).order("name"),
       supabase.from("health_package_items" as any).select("*"),
+      supabase.from("doctors" as any).select("id, full_name, specialization").eq("status", "active").order("full_name"),
     ]);
     setMeds(m.data ?? []);
     setServices((s.data as any[]) ?? []);
     setPatients(p.data ?? []);
     setInjections((inj.data as any[]) ?? []);
     setPackages((pkg.data as any[]) ?? []);
+    setDoctors((doc.data as any[]) ?? []);
     const grouped: Record<string, any[]> = {};
     ((pkgI.data as any[]) ?? []).forEach((it: any) => {
       grouped[it.package_id] = grouped[it.package_id] || [];
@@ -394,7 +397,17 @@ export default function POS() {
 
               <div className="space-y-1">
                 <Label className="text-xs flex items-center gap-1"><Stethoscope className="h-3 w-3" />Referrer Doctor</Label>
-                <Input value={referrer} onChange={e => setReferrer(e.target.value)} placeholder="Dr. name (optional)…" className="h-8" />
+                <Select value={referrer || "__none__"} onValueChange={v => setReferrer(v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-8"><SelectValue placeholder="Select doctor…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {doctors.map(d => (
+                      <SelectItem key={d.id} value={d.full_name}>
+                        {d.full_name}{d.specialization ? ` · ${d.specialization}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1">
