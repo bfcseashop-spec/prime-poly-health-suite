@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Receipt, Calendar as CalIcon, FileDown, X } from "lucide-react";
+import { Search, Receipt, Calendar as CalIcon, FileDown, X, Eye, Printer, Trash2, Pencil, Plus } from "lucide-react";
 import { fmtUSD } from "@/lib/currency";
+import { buildInvoiceHTML, printInvoice, type InvoiceData } from "@/lib/invoice";
+import { toast } from "sonner";
 
 const PAYMENTS = [
   { value: "all", label: "All methods" },
@@ -19,6 +22,8 @@ const PAYMENTS = [
   { value: "visa", label: "Card" },
   { value: "mixed", label: "Split / Mixed" },
 ];
+
+const PAY_METHODS = ["cash", "aba", "acleda", "paypal", "visa"];
 
 export default function Invoices() {
   const [sales, setSales] = useState<any[]>([]);
@@ -34,6 +39,13 @@ export default function Invoices() {
   const [openSale, setOpenSale] = useState<any | null>(null);
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editItems, setEditItems] = useState<any[]>([]);
+  const [editPayments, setEditPayments] = useState<any[]>([]);
+  const [editDiscount, setEditDiscount] = useState(0);
+  const [editNotes, setEditNotes] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -41,7 +53,7 @@ export default function Invoices() {
     setSales(data ?? []);
     const ids = Array.from(new Set((data ?? []).map(s => s.patient_id).filter(Boolean)));
     if (ids.length) {
-      const { data: pts } = await supabase.from("patients").select("id, full_name, patient_code, phone").in("id", ids as string[]);
+      const { data: pts } = await supabase.from("patients").select("id, full_name, patient_code, phone, gender").in("id", ids as string[]);
       const map: Record<string, any> = {};
       (pts ?? []).forEach(p => { map[p.id] = p; });
       setPatients(map);
@@ -75,14 +87,150 @@ export default function Invoices() {
     due: filtered.reduce((a, s) => a + Number(s.due_usd ?? 0), 0),
   }), [filtered]);
 
-  const openInvoice = async (sale: any) => {
-    setOpenSale(sale);
+  const fetchInvoiceData = async (sale: any) => {
     const [i, p] = await Promise.all([
       supabase.from("medicine_sale_items").select("*").eq("sale_id", sale.id),
       supabase.from("invoice_payments" as any).select("*").eq("sale_id", sale.id).order("created_at"),
     ]);
-    setItems(i.data ?? []);
-    setPayments((p.data as any[]) ?? []);
+    return { items: (i.data ?? []) as any[], payments: ((p.data as any[]) ?? []) };
+  };
+
+  const openInvoice = async (sale: any) => {
+    setOpenSale(sale);
+    const r = await fetchInvoiceData(sale);
+    setItems(r.items); setPayments(r.payments);
+  };
+
+  const openEdit = async (sale: any) => {
+    const r = await fetchInvoiceData(sale);
+    setOpenSale(sale);
+    setEditItems(r.items.map(it => ({ ...it })));
+    setEditPayments(r.payments.length ? r.payments.map(p => ({ ...p })) : [{ id: null, payment_method: sale.payment_method ?? "cash", amount_usd: Number(sale.amount_paid_usd ?? 0), reference: "" }]);
+    setEditDiscount(Number(sale.discount_usd ?? 0));
+    setEditNotes(sale.notes ?? "");
+    setEditOpen(true);
+  };
+
+  const buildInvoicePayload = (sale: any): InvoiceData => ({
+    invoice: sale.invoice_no,
+    created_at: sale.created_at,
+    status: sale.status ?? "paid",
+    patient: sale.patient_id ? patients[sale.patient_id] : null,
+    items: items.map(i => ({ name: i.name, description: i.description, item_type: i.item_type ?? "medicine", quantity: Number(i.quantity), price_usd: Number(i.price_usd) })),
+    subtotal: Number(sale.subtotal_usd ?? 0),
+    discount: Number(sale.discount_usd ?? 0) + Number(sale.insurance_discount_usd ?? 0),
+    total: Number(sale.total_usd ?? 0),
+    paid: Number(sale.amount_paid_usd ?? 0),
+    due: Number(sale.due_usd ?? 0),
+    splits: payments.map(p => ({ method: p.payment_method, amount: Number(p.amount_usd) })),
+    notes: sale.notes,
+  });
+
+  const printOne = async (sale: any) => {
+    const r = await fetchInvoiceData(sale);
+    setItems(r.items); setPayments(r.payments);
+    // need fresh data, build directly
+    const data: InvoiceData = {
+      invoice: sale.invoice_no,
+      created_at: sale.created_at,
+      status: sale.status ?? "paid",
+      patient: sale.patient_id ? patients[sale.patient_id] : null,
+      items: r.items.map(i => ({ name: i.name, description: i.description, item_type: i.item_type ?? "medicine", quantity: Number(i.quantity), price_usd: Number(i.price_usd) })),
+      subtotal: Number(sale.subtotal_usd ?? 0),
+      discount: Number(sale.discount_usd ?? 0) + Number(sale.insurance_discount_usd ?? 0),
+      total: Number(sale.total_usd ?? 0),
+      paid: Number(sale.amount_paid_usd ?? 0),
+      due: Number(sale.due_usd ?? 0),
+      splits: r.payments.map(p => ({ method: p.payment_method, amount: Number(p.amount_usd) })),
+      notes: sale.notes,
+    };
+    printInvoice(data, false);
+  };
+
+  const deleteInvoice = async (sale: any) => {
+    // restore stock for medicines / injections
+    const { data: its } = await supabase.from("medicine_sale_items").select("*").eq("sale_id", sale.id);
+    for (const it of its ?? []) {
+      if ((it.item_type === "medicine" || !it.item_type) && it.medicine_id) {
+        const { data: m } = await supabase.from("medicines").select("stock").eq("id", it.medicine_id).maybeSingle();
+        if (m) await supabase.from("medicines").update({ stock: Number(m.stock) + Number(it.quantity) }).eq("id", it.medicine_id);
+      } else if (it.item_type === "injection" && it.ref_id) {
+        const { data: inj } = await supabase.from("injections" as any).select("stock").eq("id", it.ref_id).maybeSingle();
+        if (inj) await supabase.from("injections" as any).update({ stock: Number((inj as any).stock) + Number(it.quantity) }).eq("id", it.ref_id);
+      }
+    }
+    await supabase.from("invoice_payments" as any).delete().eq("sale_id", sale.id);
+    await supabase.from("medicine_sale_items").delete().eq("sale_id", sale.id);
+    const { error } = await supabase.from("medicine_sales").delete().eq("id", sale.id);
+    if (error) return toast.error(error.message);
+    toast.success(`Invoice ${sale.invoice_no} deleted`);
+    setConfirmDelete(null);
+    setOpenSale(null);
+    load();
+  };
+
+  const editSubtotal = useMemo(() => editItems.reduce((s, i) => s + Number(i.price_usd) * Number(i.quantity), 0), [editItems]);
+  const editTotal = Math.max(0, +(editSubtotal - Number(editDiscount || 0)).toFixed(2));
+  const editPaid = useMemo(() => editPayments.reduce((s, p) => s + (Number(p.amount_usd) || 0), 0), [editPayments]);
+  const editDue = Math.max(0, +(editTotal - editPaid).toFixed(2));
+
+  const updEditItem = (idx: number, patch: any) => setEditItems(editItems.map((it, i) => i === idx ? { ...it, ...patch } : it));
+  const rmEditItem = (idx: number) => setEditItems(editItems.filter((_, i) => i !== idx));
+  const updEditPay = (idx: number, patch: any) => setEditPayments(editPayments.map((p, i) => i === idx ? { ...p, ...patch } : p));
+  const rmEditPay = (idx: number) => setEditPayments(editPayments.filter((_, i) => i !== idx));
+  const addEditPay = () => setEditPayments([...editPayments, { id: null, payment_method: "cash", amount_usd: editDue, reference: "" }]);
+
+  const saveEdit = async () => {
+    if (!openSale) return;
+    const status = editDue < 0.01 ? "paid" : editPaid > 0 ? "partial" : "due";
+    const primary = editPayments[0]?.payment_method ?? "cash";
+    const { error } = await supabase.from("medicine_sales").update({
+      subtotal_usd: editSubtotal,
+      discount_usd: Number(editDiscount) || 0,
+      total_usd: editTotal,
+      amount_paid_usd: editPaid,
+      due_usd: editDue,
+      status,
+      payment_method: primary,
+      notes: editNotes,
+    } as any).eq("id", openSale.id);
+    if (error) return toast.error(error.message);
+
+    // sync items: delete + reinsert (simpler)
+    await supabase.from("medicine_sale_items").delete().eq("sale_id", openSale.id);
+    if (editItems.length) {
+      await supabase.from("medicine_sale_items").insert(
+        editItems.map(it => ({
+          sale_id: openSale.id,
+          medicine_id: it.medicine_id ?? null,
+          item_type: it.item_type ?? "medicine",
+          ref_id: it.ref_id ?? null,
+          name: it.name,
+          description: it.description ?? null,
+          quantity: Number(it.quantity),
+          price_usd: Number(it.price_usd),
+          total_usd: Number(it.price_usd) * Number(it.quantity),
+        })) as any
+      );
+    }
+
+    // sync payments
+    await supabase.from("invoice_payments" as any).delete().eq("sale_id", openSale.id);
+    const validPays = editPayments.filter(p => Number(p.amount_usd) > 0);
+    if (validPays.length) {
+      await supabase.from("invoice_payments" as any).insert(
+        validPays.map(p => ({
+          sale_id: openSale.id,
+          amount_usd: Number(p.amount_usd),
+          payment_method: p.payment_method,
+          reference: p.reference || null,
+        }))
+      );
+    }
+    toast.success("Invoice updated");
+    setEditOpen(false);
+    setOpenSale(null);
+    load();
   };
 
   const exportCSV = () => {
@@ -119,6 +267,8 @@ export default function Invoices() {
     return <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${cls}`}>{s}</span>;
   };
 
+  const previewData: InvoiceData | null = openSale ? buildInvoicePayload(openSale) : null;
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between flex-wrap gap-3">
@@ -126,7 +276,7 @@ export default function Invoices() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <Receipt className="h-7 w-7 text-primary" />Invoice History
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">Search and review past sales by patient, date or payment method</p>
+          <p className="text-muted-foreground mt-1 text-sm">Search, view, edit, print or delete past invoices</p>
         </div>
         <Button variant="outline" onClick={exportCSV} disabled={!filtered.length}><FileDown className="h-4 w-4 mr-2" />Export CSV</Button>
       </div>
@@ -139,9 +289,7 @@ export default function Invoices() {
       </div>
 
       <Card className="shadow-soft">
-        <CardHeader>
-          <CardTitle className="text-base">Filters</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Filters</CardTitle></CardHeader>
         <CardContent>
           <div className="grid gap-3 md:grid-cols-6">
             <div className="space-y-1 md:col-span-2">
@@ -196,7 +344,7 @@ export default function Invoices() {
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right">Paid</TableHead>
               <TableHead className="text-right">Due</TableHead>
-              <TableHead>Status</TableHead><TableHead></TableHead>
+              <TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {loading ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-12">Loading…</TableCell></TableRow>
@@ -204,7 +352,7 @@ export default function Invoices() {
                 : filtered.map(s => {
                   const p = s.patient_id ? patients[s.patient_id] : null;
                   return (
-                    <TableRow key={s.id} className="cursor-pointer hover:bg-accent/40" onClick={() => openInvoice(s)}>
+                    <TableRow key={s.id} className="hover:bg-accent/40">
                       <TableCell className="font-mono text-sm">{s.invoice_no}</TableCell>
                       <TableCell className="text-sm">{new Date(s.created_at).toLocaleString()}</TableCell>
                       <TableCell className="text-sm">{p ? `${p.patient_code} — ${p.full_name}` : <span className="text-muted-foreground">Walk-in</span>}</TableCell>
@@ -213,7 +361,14 @@ export default function Invoices() {
                       <TableCell className="text-right text-success">{fmtUSD(Number(s.amount_paid_usd ?? 0))}</TableCell>
                       <TableCell className="text-right text-destructive">{Number(s.due_usd) > 0 ? fmtUSD(Number(s.due_usd)) : "—"}</TableCell>
                       <TableCell><StatusBadge s={s.status ?? "paid"} /></TableCell>
-                      <TableCell><Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); openInvoice(s); }}>View</Button></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="View" onClick={() => openInvoice(s)}><Eye className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Print" onClick={() => printOne(s)}><Printer className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete" onClick={() => setConfirmDelete(s)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -222,47 +377,119 @@ export default function Invoices() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!openSale} onOpenChange={o => !o && setOpenSale(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />{openSale?.invoice_no}</DialogTitle></DialogHeader>
-          {openSale && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-3 text-sm">
-                <div><p className="text-xs text-muted-foreground">Date</p><p className="font-medium">{new Date(openSale.created_at).toLocaleString()}</p></div>
-                <div><p className="text-xs text-muted-foreground">Total</p><p className="font-semibold">{fmtUSD(Number(openSale.total_usd))}</p></div>
-                <div><p className="text-xs text-muted-foreground">Paid</p><p className="font-semibold text-success">{fmtUSD(Number(openSale.amount_paid_usd ?? 0))}</p></div>
-                <div><p className="text-xs text-muted-foreground">Due</p><p className="font-semibold text-destructive">{fmtUSD(Number(openSale.due_usd ?? 0))}</p></div>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Items</h3>
-                <div className="border rounded-md divide-y max-h-48 overflow-y-auto">
-                  {items.map(i => (
-                    <div key={i.id} className="flex justify-between p-2 text-sm">
-                      <div><p>{i.name}</p><p className="text-xs text-muted-foreground capitalize">{i.item_type ?? "medicine"} • {i.quantity} × {fmtUSD(Number(i.price_usd))}</p></div>
-                      <p className="font-medium">{fmtUSD(Number(i.total_usd))}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Payments</h3>
-                <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
-                  {payments.length === 0 ? <p className="p-3 text-xs text-muted-foreground text-center">No payment records</p> :
-                    payments.map(p => (
-                      <div key={p.id} className="flex justify-between p-2 text-sm">
-                        <div>
-                          <p className="capitalize font-medium">{p.payment_method}{p.reference ? ` • ${p.reference}` : ""}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleString()}</p>
-                        </div>
-                        <p className="font-semibold text-success">+{fmtUSD(Number(p.amount_usd))}</p>
-                      </div>
-                    ))}
-                </div>
-              </div>
+      {/* VIEW DIALOG — full invoice preview */}
+      <Dialog open={!!openSale && !editOpen} onOpenChange={o => !o && setOpenSale(null)}>
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5 text-primary" />{openSale?.invoice_no}</DialogTitle>
+          </DialogHeader>
+          {previewData && (
+            <div className="bg-muted/30 rounded-md overflow-hidden border">
+              <iframe
+                title="Invoice preview"
+                srcDoc={buildInvoiceHTML(previewData, false)}
+                className="w-full bg-white"
+                style={{ height: "70vh", border: 0 }}
+              />
             </div>
           )}
+          <DialogFooter className="gap-2 sm:justify-between flex-wrap">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => openSale && openEdit(openSale)}><Pencil className="h-4 w-4 mr-1" />Edit</Button>
+              <Button variant="outline" className="text-destructive" onClick={() => openSale && setConfirmDelete(openSale)}><Trash2 className="h-4 w-4 mr-1" />Delete</Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => previewData && printInvoice(previewData, true)}><Printer className="h-4 w-4 mr-1" />Print (Compact)</Button>
+              <Button onClick={() => previewData && printInvoice(previewData, false)}><Printer className="h-4 w-4 mr-1" />Print (Full size)</Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* EDIT DIALOG */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Pencil className="h-5 w-5 text-primary" />Edit Invoice {openSale?.invoice_no}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-semibold">Items</Label>
+              </div>
+              <div className="border rounded-md divide-y">
+                {editItems.length === 0 && <p className="p-3 text-xs text-center text-muted-foreground">No items</p>}
+                {editItems.map((it, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 p-2 items-center">
+                    <Input className="col-span-5 h-8 text-xs" value={it.name} onChange={e => updEditItem(idx, { name: e.target.value })} placeholder="Name" />
+                    <Input className="col-span-3 h-8 text-xs" value={it.description ?? ""} onChange={e => updEditItem(idx, { description: e.target.value })} placeholder="Description" />
+                    <Input type="number" className="col-span-1 h-8 text-xs" value={it.quantity} onChange={e => updEditItem(idx, { quantity: Number(e.target.value) || 0 })} />
+                    <Input type="number" step="0.01" className="col-span-2 h-8 text-xs" value={it.price_usd} onChange={e => updEditItem(idx, { price_usd: Number(e.target.value) || 0 })} />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 col-span-1" onClick={() => rmEditItem(idx)}><Trash2 className="h-3 w-3" /></Button>
+                  </div>
+                ))}
+              </div>
+              <Button variant="ghost" size="sm" className="mt-2" onClick={() => setEditItems([...editItems, { name: "", description: "", item_type: "service", quantity: 1, price_usd: 0 }])}><Plus className="h-3 w-3 mr-1" />Add item</Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Discount (USD)</Label>
+                <Input type="number" step="0.01" value={editDiscount} onChange={e => setEditDiscount(Number(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="text-xs">Notes</Label>
+                <Input value={editNotes} onChange={e => setEditNotes(e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-semibold">Payments</Label>
+                <Button variant="ghost" size="sm" onClick={addEditPay}><Plus className="h-3 w-3 mr-1" />Add</Button>
+              </div>
+              <div className="border rounded-md divide-y">
+                {editPayments.map((p, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 p-2 items-center">
+                    <Select value={p.payment_method} onValueChange={v => updEditPay(idx, { payment_method: v })}>
+                      <SelectTrigger className="col-span-4 h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{PAY_METHODS.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Input type="number" step="0.01" className="col-span-3 h-8 text-xs" value={p.amount_usd} onChange={e => updEditPay(idx, { amount_usd: Number(e.target.value) || 0 })} />
+                    <Input className="col-span-4 h-8 text-xs" placeholder="Reference (optional)" value={p.reference ?? ""} onChange={e => updEditPay(idx, { reference: e.target.value })} />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 col-span-1" onClick={() => rmEditPay(idx)}><Trash2 className="h-3 w-3" /></Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3 text-sm bg-muted/40 p-3 rounded-md">
+              <div><p className="text-xs text-muted-foreground">Subtotal</p><p className="font-semibold">{fmtUSD(editSubtotal)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Total</p><p className="font-bold text-primary">{fmtUSD(editTotal)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Paid</p><p className="font-semibold text-success">{fmtUSD(editPaid)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Due</p><p className={`font-semibold ${editDue > 0 ? "text-destructive" : "text-success"}`}>{fmtUSD(editDue)}</p></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={saveEdit}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DELETE CONFIRM */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={o => !o && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete invoice {confirmDelete?.invoice_no}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the invoice, its items and payment records. Stock for medicines/injections will be restored. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmDelete && deleteInvoice(confirmDelete)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
