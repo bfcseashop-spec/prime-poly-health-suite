@@ -51,6 +51,9 @@ export default function POS() {
   const { user } = useAuth();
   const [meds, setMeds] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [injections, setInjections] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [packageItems, setPackageItems] = useState<Record<string, any[]>>({});
   const [patients, setPatients] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("medicine");
@@ -65,27 +68,49 @@ export default function POS() {
   const [custom, setCustom] = useState({ name: "", price_usd: 0, item_type: "service" as CartItem["item_type"] });
 
   const load = async () => {
-    const [m, s, p] = await Promise.all([
+    const [m, s, p, inj, pkg, pkgI] = await Promise.all([
       supabase.from("medicines").select("*").order("name"),
       supabase.from("service_catalog" as any).select("*").eq("active", true).order("name"),
       supabase.from("patients").select("id, full_name, patient_code").order("created_at", { ascending: false }).limit(200),
+      supabase.from("injections" as any).select("*").eq("active", true).order("name"),
+      supabase.from("health_packages" as any).select("*").eq("active", true).order("name"),
+      supabase.from("health_package_items" as any).select("*"),
     ]);
     setMeds(m.data ?? []);
     setServices((s.data as any[]) ?? []);
     setPatients(p.data ?? []);
+    setInjections((inj.data as any[]) ?? []);
+    setPackages((pkg.data as any[]) ?? []);
+    const grouped: Record<string, any[]> = {};
+    ((pkgI.data as any[]) ?? []).forEach((it: any) => {
+      grouped[it.package_id] = grouped[it.package_id] || [];
+      grouped[it.package_id].push(it);
+    });
+    setPackageItems(grouped);
   };
   useEffect(() => { load(); }, []);
 
   const catalogItems = useMemo(() => {
+    const ql = q.toLowerCase();
     if (activeCat === "medicine") {
       return meds
-        .filter(m => !q || m.name.toLowerCase().includes(q.toLowerCase()) || m.brand?.toLowerCase().includes(q.toLowerCase()) || m.barcode === q)
+        .filter(m => !q || m.name.toLowerCase().includes(ql) || m.brand?.toLowerCase().includes(ql) || m.barcode === q)
         .map(m => ({ id: m.id, name: m.name, sub: m.brand, price: Number(m.price_usd), stock: m.stock, low: m.stock <= m.low_stock_threshold, item_type: "medicine" as const, raw: m }));
     }
+    if (activeCat === "injection") {
+      return injections
+        .filter(i => !q || i.name.toLowerCase().includes(ql) || i.brand?.toLowerCase().includes(ql))
+        .map(i => ({ id: i.id, name: i.name, sub: [i.brand, i.dose, i.route].filter(Boolean).join(" • "), price: Number(i.price_usd), stock: i.stock, low: i.stock <= 5, item_type: "injection" as const, raw: i }));
+    }
+    if (activeCat === "package") {
+      return packages
+        .filter(p => !q || p.name.toLowerCase().includes(ql))
+        .map(p => ({ id: p.id, name: p.name, sub: p.description, price: Number(p.final_price_usd), item_type: "package" as const, raw: p }));
+    }
     return services
-      .filter(s => s.category === activeCat && (!q || s.name.toLowerCase().includes(q.toLowerCase())))
+      .filter(s => s.category === activeCat && (!q || s.name.toLowerCase().includes(ql)))
       .map(s => ({ id: s.id, name: s.name, sub: s.description, price: Number(s.price_usd), item_type: s.category as CartItem["item_type"], raw: s }));
-  }, [activeCat, meds, services, q]);
+  }, [activeCat, meds, services, injections, packages, q]);
 
   const subtotal = useMemo(() => cart.reduce((s, c) => s + c.price_usd * c.quantity, 0), [cart]);
   const insuranceDiscount = insuranceCard ? +(subtotal * (Number(insuranceCard.discount_percent) / 100)).toFixed(2) : 0;
