@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, Search, ShieldCheck, CalendarIcon, CreditCard, LayoutGrid, List, Crown, Gem, Star, Shield } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ShieldCheck, CalendarIcon, CreditCard, LayoutGrid, List, Crown, Gem, Star, Shield, Printer, Eye, ScanBarcode } from "lucide-react";
+import { InsuranceCardPreview, printCard, type CardData } from "@/components/insurance/InsuranceCardPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fmtUSD } from "@/lib/currency";
@@ -89,6 +90,9 @@ export default function Insurance() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [patientPickerOpen, setPatientPickerOpen] = useState(false);
+  const [previewCard, setPreviewCard] = useState<Row | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanInput, setScanInput] = useState("");
 
   const blank = {
     patient_id: null as string | null,
@@ -218,6 +222,35 @@ export default function Insurance() {
     });
   }, [items, search, filterTier, filterStatus]);
 
+  const patientMap = useMemo(() => Object.fromEntries(patients.map(p => [p.id, p])), [patients]);
+  const toCardData = (r: Row): CardData => ({
+    card_no: r.card_no,
+    patient_name: r.patient_name,
+    patient_code: r.patient_id ? patientMap[r.patient_id]?.patient_code ?? null : null,
+    tier: r.tier,
+    discount_percent: Number(r.discount_percent),
+    coverage_amount_usd: Number(r.coverage_amount_usd),
+    used_amount_usd: Number(r.used_amount_usd),
+    provider: r.provider,
+    valid_from: r.valid_from,
+    valid_to: r.valid_to,
+    status: r.status,
+  });
+
+  const handleScan = () => {
+    const code = scanInput.trim();
+    if (!code) return;
+    const found = items.find(i => i.card_no.toLowerCase() === code.toLowerCase());
+    if (!found) {
+      toast({ title: "Card not found", description: code, variant: "destructive" });
+      return;
+    }
+    setScanInput("");
+    setScanOpen(false);
+    setPreviewCard(found);
+    toast({ title: "Card matched", description: `${found.patient_name ?? ""} • ${TIER_CONFIG[found.tier].label} • ${Number(found.discount_percent)}% discount` });
+  };
+
   const stats = useMemo(() => {
     const total = items.length;
     const active = items.filter((i) => i.status === "active").length;
@@ -233,7 +266,10 @@ export default function Insurance() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Insurance Cards</h1>
           <p className="text-muted-foreground mt-1">Issue and manage patient insurance cards with tier-based discounts</p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" /> Issue New Card</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setScanOpen(true)} className="gap-2"><ScanBarcode className="h-4 w-4" />Scan Card</Button>
+          <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" /> Issue New Card</Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -347,11 +383,17 @@ export default function Insurance() {
                     </div>
 
                     <div className="relative mt-4 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => openEdit(r)}>
+                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => setPreviewCard(r)} title="View / Print">
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => printCard(toCardData(r))} title="Print">
+                        <Printer className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => openEdit(r)} title="Edit">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       {isAdmin && (
-                        <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-destructive text-white border-0" onClick={() => setDeleteId(r.id)}>
+                        <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/15 hover:bg-destructive text-white border-0" onClick={() => setDeleteId(r.id)} title="Delete">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -389,9 +431,11 @@ export default function Insurance() {
                       <TableCell><Badge variant="outline" className="capitalize">{r.status}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => setPreviewCard(r)} title="View"><Eye className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => printCard(toCardData(r))} title="Print"><Printer className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(r)} title="Edit"><Pencil className="h-4 w-4" /></Button>
                           {isAdmin && (
-                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)}>
+                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)} title="Delete">
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           )}
@@ -586,6 +630,48 @@ export default function Insurance() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Card preview dialog */}
+      <Dialog open={!!previewCard} onOpenChange={(o) => !o && setPreviewCard(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Insurance Card Preview</DialogTitle>
+            <DialogDescription>Front and back view — ready to print.</DialogDescription>
+          </DialogHeader>
+          {previewCard && <InsuranceCardPreview card={toCardData(previewCard)} />}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewCard(null)}>Close</Button>
+            {previewCard && (
+              <Button onClick={() => printCard(toCardData(previewCard))} className="gap-2">
+                <Printer className="h-4 w-4" /> Print Card
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Scan dialog */}
+      <Dialog open={scanOpen} onOpenChange={setScanOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Scan Insurance Card</DialogTitle>
+            <DialogDescription>Use a barcode scanner or type the card number to fetch the patient record and apply discount.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleScan(); }} className="space-y-3">
+            <Input
+              autoFocus
+              placeholder="Scan or type card number (e.g. GLD-00012)"
+              value={scanInput}
+              onChange={(e) => setScanInput(e.target.value)}
+              className="font-mono uppercase"
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setScanOpen(false)}>Cancel</Button>
+              <Button type="submit" className="gap-2"><ScanBarcode className="h-4 w-4" />Lookup</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
