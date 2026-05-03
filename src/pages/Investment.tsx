@@ -97,8 +97,46 @@ export default function Investment() {
   const [catForm, setCatForm] = useState<{ id: string; name: string; color: string }>({ id: "", name: "", color: COLOR_PRESETS[0].value });
   const [deleteCatId, setDeleteCatId] = useState<string | null>(null);
   const [investorMgrOpen, setInvestorMgrOpen] = useState(false);
-  const [quickInv, setQuickInv] = useState({ full_name: "", email: "", phone: "", notes: "" });
+  const [quickInv, setQuickInv] = useState({ full_name: "", email: "", phone: "", notes: "", photo_url: "" });
   const [quickInvSaving, setQuickInvSaving] = useState(false);
+  const [quickPhotoUploading, setQuickPhotoUploading] = useState(false);
+  const quickPhotoRef = useRef<HTMLInputElement>(null);
+  const investorPhotoRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const uploadInvestorPhoto = async (file: File): Promise<string | null> => {
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("investor-photos").upload(path, file, { upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from("investor-photos").getPublicUrl(path);
+      return data.publicUrl;
+    } catch (e: any) {
+      toast.error(e.message);
+      return null;
+    }
+  };
+
+  const handleQuickPhoto = async (file: File) => {
+    setQuickPhotoUploading(true);
+    const url = await uploadInvestorPhoto(file);
+    setQuickPhotoUploading(false);
+    if (url) {
+      setQuickInv(p => ({ ...p, photo_url: url }));
+      toast.success("Photo uploaded");
+    }
+  };
+
+  const handleInvestorPhotoChange = async (investorId: string, file: File) => {
+    const url = await uploadInvestorPhoto(file);
+    if (!url) return;
+    const { error } = await (supabase.from("shareholders" as any) as any)
+      .update({ photo_url: url }).eq("id", investorId);
+    if (error) return toast.error(error.message);
+    toast.success("Photo updated");
+    load();
+  };
+
   const addQuickInvestor = async () => {
     if (!quickInv.full_name.trim()) return toast.error("Name is required");
     setQuickInvSaving(true);
@@ -108,6 +146,7 @@ export default function Investment() {
       email: quickInv.email || null,
       phone: quickInv.phone || null,
       notes: quickInv.notes || null,
+      photo_url: quickInv.photo_url || null,
       share_percent: 0,
       committed_capital_usd: 0,
       active: true,
@@ -116,7 +155,7 @@ export default function Investment() {
     setQuickInvSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Investor added");
-    setQuickInv({ full_name: "", email: "", phone: "", notes: "" });
+    setQuickInv({ full_name: "", email: "", phone: "", notes: "", photo_url: "" });
     load();
   };
 
@@ -1267,32 +1306,68 @@ export default function Investment() {
             <div className="space-y-3">
               <Label className="text-sm font-semibold">Add new investor</Label>
               <div className="rounded-xl border-2 border-dashed bg-muted/20 p-3 space-y-2">
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    placeholder="Name *"
-                    className="h-10 border-2 bg-background flex-1"
-                    value={quickInv.full_name}
-                    onChange={e => setQuickInv({ ...quickInv, full_name: e.target.value })}
-                  />
-                  <Input
-                    placeholder="Email"
-                    className="h-10 border-2 bg-background flex-1"
-                    value={quickInv.email}
-                    onChange={e => setQuickInv({ ...quickInv, email: e.target.value })}
-                  />
-                  <Input
-                    placeholder="Phone"
-                    className="h-10 border-2 bg-background flex-1"
-                    value={quickInv.phone}
-                    onChange={e => setQuickInv({ ...quickInv, phone: e.target.value })}
-                  />
-                  <Button
-                    onClick={addQuickInvestor}
-                    disabled={quickInvSaving}
-                    className="h-10 px-6 clinic-gradient text-primary-foreground font-semibold shrink-0"
+                <input
+                  ref={quickPhotoRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={e => e.target.files?.[0] && handleQuickPhoto(e.target.files[0])}
+                />
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => quickPhotoRef.current?.click()}
+                    disabled={quickPhotoUploading}
+                    className="relative h-14 w-14 shrink-0 rounded-full overflow-hidden border-2 border-dashed bg-background hover:border-primary hover:bg-primary/5 transition group"
+                    title="Upload photo"
                   >
-                    {quickInvSaving ? "Adding..." : "Add"}
-                  </Button>
+                    {quickInv.photo_url ? (
+                      <>
+                        <img src={quickInv.photo_url} alt="" className="h-full w-full object-cover" />
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition">
+                          <Upload className="h-4 w-4 text-white" />
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex flex-col items-center justify-center h-full w-full text-muted-foreground">
+                        {quickPhotoUploading ? (
+                          <span className="text-[10px]">...</span>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            <span className="text-[9px] mt-0.5">Photo</span>
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </button>
+                  <div className="flex-1 flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Name *"
+                      className="h-10 border-2 bg-background flex-1"
+                      value={quickInv.full_name}
+                      onChange={e => setQuickInv({ ...quickInv, full_name: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Email"
+                      className="h-10 border-2 bg-background flex-1"
+                      value={quickInv.email}
+                      onChange={e => setQuickInv({ ...quickInv, email: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Phone"
+                      className="h-10 border-2 bg-background flex-1"
+                      value={quickInv.phone}
+                      onChange={e => setQuickInv({ ...quickInv, phone: e.target.value })}
+                    />
+                    <Button
+                      onClick={addQuickInvestor}
+                      disabled={quickInvSaving}
+                      className="h-10 px-6 clinic-gradient text-primary-foreground font-semibold shrink-0"
+                    >
+                      {quickInvSaving ? "Adding..." : "Add"}
+                    </Button>
+                  </div>
                 </div>
                 <Input
                   placeholder="Notes"
@@ -1323,15 +1398,32 @@ export default function Investment() {
                         key={s.id}
                         className="group flex items-center gap-3 rounded-xl border bg-card hover:bg-muted/40 hover:shadow-sm transition px-3 py-2.5"
                       >
-                        <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background shadow-sm">
-                          <AvatarImage src={s.photo_url || undefined} />
-                          <AvatarFallback
-                            className="text-primary-foreground text-sm font-semibold"
-                            style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}
-                          >
-                            {s.full_name?.[0]?.toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <button
+                          type="button"
+                          onClick={() => investorPhotoRefs.current[s.id]?.click()}
+                          className="relative shrink-0 rounded-full group"
+                          title="Change photo"
+                        >
+                          <input
+                            ref={el => { investorPhotoRefs.current[s.id] = el; }}
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={e => e.target.files?.[0] && handleInvestorPhotoChange(s.id, e.target.files[0])}
+                          />
+                          <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
+                            <AvatarImage src={s.photo_url || undefined} />
+                            <AvatarFallback
+                              className="text-primary-foreground text-sm font-semibold"
+                              style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}
+                            >
+                              {s.full_name?.[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition">
+                            <Upload className="h-3.5 w-3.5 text-white" />
+                          </span>
+                        </button>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{s.full_name}</p>
                           <p className="text-[11px] text-muted-foreground truncate">
