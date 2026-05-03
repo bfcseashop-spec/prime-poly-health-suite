@@ -625,3 +625,28 @@ function ItemPicker({ items, onAdd }: { items: { id: string; name: string; price
     </div>
   );
 }
+
+function Toolbar({ selectionCount, onAdd, onImport, onExportCSV, onExportXLSX, onDownloadTemplate, onPrintBarcode, onBulkDelete }: {
+  selectionCount: number; onAdd: () => void; onImport: (f: File) => void; onExportCSV: () => void; onExportXLSX: () => void; onDownloadTemplate: () => void; onPrintBarcode: () => void; onBulkDelete: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 ml-auto">
+      {selectionCount > 0 && (
+        <>
+          <Badge variant="secondary">{selectionCount} selected</Badge>
+          <Button size="sm" variant="outline" onClick={onPrintBarcode}><BarcodeIcon className="h-4 w-4" /> Print Barcodes</Button>
+          <Button size="sm" variant="destructive" onClick={onBulkDelete}><Trash2 className="h-4 w-4" /> Delete</Button>
+        </>
+      )}
+      <Button size="sm" variant="outline" onClick={onDownloadTemplate} title="Download import template"><FileSpreadsheet className="h-4 w-4" /> Template</Button>
+      <label>
+        <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { onImport(f); e.currentTarget.value = ""; } }} />
+        <Button size="sm" variant="outline" asChild><span className="cursor-pointer"><Upload className="h-4 w-4" /> Import</span></Button>
+      </label>
+      <Button size="sm" variant="outline" onClick={onExportXLSX}><Download className="h-4 w-4" /> Excel</Button>
+      <Button size="sm" variant="outline" onClick={onExportCSV}><Download className="h-4 w-4" /> CSV</Button>
+      <Button size="sm" onClick={onAdd}><Plus className="h-4 w-4" /> Add</Button>
+    </div>
+  );
+}
+
