@@ -20,6 +20,7 @@ import Expenses from "./pages/Expenses";
 import Insurance from "./pages/Insurance";
 import Laboratory from "./pages/Laboratory";
 import XRay from "./pages/XRay";
+import Services from "./pages/Services";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
