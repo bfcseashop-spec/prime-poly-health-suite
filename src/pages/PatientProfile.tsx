@@ -153,8 +153,11 @@ export default function PatientProfile() {
           <TabsTrigger value="prescriptions"><Pill className="h-4 w-4 mr-1" />Prescriptions</TabsTrigger>
           <TabsTrigger value="pharmacy"><Receipt className="h-4 w-4 mr-1" />Pharmacy</TabsTrigger>
           <TabsTrigger value="insurance"><CreditCard className="h-4 w-4 mr-1" />Insurance</TabsTrigger>
+          <TabsTrigger value="gallery"><Images className="h-4 w-4 mr-1" />Gallery</TabsTrigger>
           <TabsTrigger value="info"><FileText className="h-4 w-4 mr-1" />Info</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="gallery"><PatientPhotoGallery patientId={p.id} /></TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
           <Timeline visits={visits} records={records} labs={labs} rx={rx} sales={sales} />
