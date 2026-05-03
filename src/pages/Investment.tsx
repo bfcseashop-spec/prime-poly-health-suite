@@ -400,7 +400,7 @@ export default function Investment() {
       const payload: any = {
         shareholder_id: cForm.shareholder_id,
         investment_name: cForm.investment_name.trim(),
-        category: cForm.category,
+        category: categoryValue,
         amount_usd: amt,
         paid_on: cForm.paid_on,
         payment_method: cForm.payment_method,
