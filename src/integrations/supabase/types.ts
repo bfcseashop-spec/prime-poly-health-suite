@@ -697,47 +697,113 @@ export type Database = {
           },
         ]
       }
+      medicine_stock_history: {
+        Row: {
+          change_type: string
+          cost_price_usd: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          medicine_id: string
+          notes: string | null
+          quantity_change: number
+          stock_after: number
+          stock_before: number
+        }
+        Insert: {
+          change_type: string
+          cost_price_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          medicine_id: string
+          notes?: string | null
+          quantity_change: number
+          stock_after: number
+          stock_before: number
+        }
+        Update: {
+          change_type?: string
+          cost_price_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          medicine_id?: string
+          notes?: string | null
+          quantity_change?: number
+          stock_after?: number
+          stock_before?: number
+        }
+        Relationships: []
+      }
       medicines: {
         Row: {
           barcode: string | null
+          box_price_usd: number | null
           brand: string | null
           category: string | null
+          cost_price_usd: number
           created_at: string
           expiry_date: string | null
+          generic_name: string | null
           id: string
           low_stock_threshold: number
           name: string
+          packet_price_usd: number | null
           price_usd: number
           stock: number
+          strip_price_usd: number | null
+          supplier: string | null
           unit: string | null
+          units_per_box: number | null
+          units_per_packet: number | null
+          units_per_strip: number | null
           updated_at: string
         }
         Insert: {
           barcode?: string | null
+          box_price_usd?: number | null
           brand?: string | null
           category?: string | null
+          cost_price_usd?: number
           created_at?: string
           expiry_date?: string | null
+          generic_name?: string | null
           id?: string
           low_stock_threshold?: number
           name: string
+          packet_price_usd?: number | null
           price_usd?: number
           stock?: number
+          strip_price_usd?: number | null
+          supplier?: string | null
           unit?: string | null
+          units_per_box?: number | null
+          units_per_packet?: number | null
+          units_per_strip?: number | null
           updated_at?: string
         }
         Update: {
           barcode?: string | null
+          box_price_usd?: number | null
           brand?: string | null
           category?: string | null
+          cost_price_usd?: number
           created_at?: string
           expiry_date?: string | null
+          generic_name?: string | null
           id?: string
           low_stock_threshold?: number
           name?: string
+          packet_price_usd?: number | null
           price_usd?: number
           stock?: number
+          strip_price_usd?: number | null
+          supplier?: string | null
           unit?: string | null
+          units_per_box?: number | null
+          units_per_packet?: number | null
+          units_per_strip?: number | null
           updated_at?: string
         }
         Relationships: []
