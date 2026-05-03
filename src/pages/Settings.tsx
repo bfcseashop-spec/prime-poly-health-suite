@@ -67,7 +67,7 @@ export default function Settings() {
     const n = localStorage.getItem("notif_prefs");
     if (n) try { setNotif({ ...notif, ...JSON.parse(n) }); } catch {}
     if (user) {
-      supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle().then(({ data }: any) => {
+      supabase.from("profiles").select("*").eq("id", user.id).maybeSingle().then(({ data }: any) => {
         if (data) setProfile({ full_name: data.full_name || "", phone: data.phone || "" });
       });
     }
@@ -78,7 +78,7 @@ export default function Settings() {
   const loadUsers = async () => {
     setLoadingUsers(true);
     const [{ data: profs }, { data: rolesData }] = await Promise.all([
-      supabase.from("profiles").select("user_id, full_name, phone"),
+      supabase.from("profiles").select("id, full_name, phone"),
       supabase.from("user_roles").select("user_id, role"),
     ]);
     const map: Record<string, any> = {};
@@ -95,8 +95,8 @@ export default function Settings() {
     if (!user) return;
     setSavingProfile(true);
     const { error } = await supabase.from("profiles").upsert(
-      { user_id: user.id, full_name: profile.full_name, phone: profile.phone },
-      { onConflict: "user_id" } as any,
+      { id: user.id, full_name: profile.full_name, phone: profile.phone },
+      { onConflict: "id" } as any,
     );
     setSavingProfile(false);
     if (error) toast.error(error.message); else toast.success("Profile updated");
