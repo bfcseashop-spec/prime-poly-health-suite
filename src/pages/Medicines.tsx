@@ -797,5 +797,6 @@ export default function Medicines() {
           <DialogFooter><Button variant="outline" onClick={() => setViewRow(null)}>Close</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
   );
 }
