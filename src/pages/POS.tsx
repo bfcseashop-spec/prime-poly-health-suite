@@ -128,7 +128,7 @@ export default function POS() {
     return 0;
   }, [discountType, discountValue, subtotal]);
   const total = Math.max(0, +(subtotal - discount - insuranceDiscount).toFixed(2));
-  const effectiveSplits = useMemo<SplitPayment[]>(() => splitMode ? splits : [{ id: "auto", method: autoMethod, amount: total }], [splitMode, splits, autoMethod, total]);
+  const effectiveSplits = useMemo<SplitPayment[]>(() => splitMode ? splits : (autoMethod === "due" ? [] : [{ id: "auto", method: autoMethod, amount: total }]), [splitMode, splits, autoMethod, total]);
   const totalPaid = useMemo(() => effectiveSplits.reduce((s, p) => s + (Number(p.amount) || 0), 0), [effectiveSplits]);
   const due = Math.max(0, +(total - totalPaid).toFixed(2));
 
