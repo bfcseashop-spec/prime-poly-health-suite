@@ -841,9 +841,9 @@ export default function Investment() {
           </div>
 
           {view === "list" ? (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-auto max-h-[600px] min-h-[480px]">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Investment</TableHead>
