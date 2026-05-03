@@ -77,7 +77,7 @@ export default function POS() {
     const [m, s, p, inj, pkg, pkgI] = await Promise.all([
       supabase.from("medicines").select("*").order("name"),
       supabase.from("service_catalog" as any).select("*").eq("active", true).order("name"),
-      supabase.from("patients").select("id, full_name, patient_code").order("created_at", { ascending: false }).limit(200),
+      supabase.from("patients").select("id, full_name, patient_code, gender").order("created_at", { ascending: false }).limit(200),
       supabase.from("injections" as any).select("*").eq("active", true).order("name"),
       supabase.from("health_packages" as any).select("*").eq("active", true).order("name"),
       supabase.from("health_package_items" as any).select("*"),
