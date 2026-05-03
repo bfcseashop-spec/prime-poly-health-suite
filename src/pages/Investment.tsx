@@ -1110,11 +1110,52 @@ export default function Investment() {
               />
             </div>
 
-            {!cForm.id && shareholders.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Will be auto-split across {shareholders.filter((s: any) => s.active !== false).length} investor(s) by their share %.
-              </p>
-            )}
+            {!cForm.id && shareholders.filter((s: any) => s.active !== false).length > 0 && (() => {
+              const active = shareholders.filter((s: any) => s.active !== false);
+              const amt = Number(cForm.amount_usd) || 0;
+              const totalShare = active.reduce((s: number, x: any) => s + Number(x.share_percent || 0), 0);
+              const useEqual = totalShare <= 0;
+              const totalPct = useEqual ? 100 : totalShare;
+              const rows = active.map((s: any, i: number) => {
+                const pct = useEqual ? 100 / active.length : Number(s.share_percent || 0);
+                const portion = amt > 0 ? +((amt * pct) / totalPct).toFixed(2) : 0;
+                return { s, pct, portion, i };
+              });
+              return (
+                <div className="rounded-xl border-2 border-dashed bg-muted/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Live Split Preview
+                    </p>
+                    <span className={cn(
+                      "text-[10px] font-medium px-2 py-0.5 rounded-full",
+                      useEqual ? "bg-warning/15 text-warning" : "bg-success/15 text-success"
+                    )}>
+                      {useEqual ? "Equal split (no shares set)" : `${totalShare.toFixed(2)}% allocated`}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {rows.map(({ s, pct, portion, i }) => (
+                      <div key={s.id} className="flex items-center gap-2 text-sm bg-background rounded-lg border px-2.5 py-1.5">
+                        <Avatar className="h-7 w-7" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}>
+                          <AvatarImage src={s.photo_url || undefined} />
+                          <AvatarFallback className="text-[10px] text-primary-foreground" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}>
+                            {s.full_name?.[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="flex-1 truncate">{s.full_name}</span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 tabular-nums">{pct.toFixed(2)}%</Badge>
+                        <span className="font-semibold tabular-nums w-24 text-right text-success">{fmtUSD(portion)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-xs pt-1 border-t">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-bold tabular-nums">{fmtUSD(amt)}</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             <Button
               onClick={submitC}
