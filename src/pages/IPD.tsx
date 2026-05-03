@@ -133,6 +133,33 @@ export default function IPD() {
     load();
   };
 
+  const openTransfer = (adm: any) => {
+    setTransferFor(adm);
+    setTransferForm({ room_id: "", bed_no: "", doctor_name: adm.doctor_name || "", reason: "" });
+  };
+
+  const submitTransfer = async () => {
+    if (!transferFor) return;
+    if (!transferForm.room_id) return toast.error("Select a destination room");
+    if (transferForm.room_id === transferFor.room_id) return toast.error("Choose a different room");
+    const newRoom = rooms.find(r => r.id === transferForm.room_id);
+    const prevNote = transferFor.notes ? `${transferFor.notes}\n` : "";
+    const transferLog = `[Transfer ${format(new Date(), "PPp")}] ${transferFor.rooms?.room_no || "—"} → ${newRoom?.room_no}${transferForm.reason ? ` • ${transferForm.reason}` : ""}`;
+    const { error } = await (supabase.from("admissions" as any) as any)
+      .update({
+        room_id: transferForm.room_id,
+        bed_no: transferForm.bed_no || null,
+        doctor_name: transferForm.doctor_name || null,
+        daily_rate_usd: newRoom?.daily_rate_usd ?? transferFor.daily_rate_usd,
+        notes: prevNote + transferLog,
+      })
+      .eq("id", transferFor.id);
+    if (error) return toast.error(error.message);
+    toast.success("Patient transferred");
+    setTransferFor(null);
+    load();
+  };
+
   const setRoomStatus = async (id: string, status: string) => {
     const { error } = await (supabase.from("rooms" as any) as any).update({ status }).eq("id", id);
     if (error) return toast.error(error.message);
