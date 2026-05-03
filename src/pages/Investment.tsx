@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import {
   PiggyBank, Receipt, CircleCheck, CircleAlert, Pencil, Trash2,
   Plus, Search, Calendar, Download, List, LayoutGrid, Eye, ImageIcon, X, Upload,
+  Users, Tag, Settings2,
 } from "lucide-react";
 
 const PIE_COLORS = [
@@ -29,23 +30,19 @@ const PIE_COLORS = [
   "hsl(280,65%,60%)","hsl(340,75%,55%)","hsl(190,80%,45%)","hsl(25,85%,55%)",
 ];
 
-const CATEGORIES = [
-  "Capital", "Monthly Salary", "Electricity", "Rent", "Medicine",
-  "Real Estate", "Equipment", "Maintenance", "Marketing", "Other",
+const COLOR_PRESETS = [
+  { label: "Blue",    value: "bg-blue-500/10 text-blue-600 border-blue-500/20",       dot: "bg-blue-500" },
+  { label: "Green",   value: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", dot: "bg-emerald-500" },
+  { label: "Amber",   value: "bg-amber-500/10 text-amber-600 border-amber-500/20",     dot: "bg-amber-500" },
+  { label: "Orange",  value: "bg-orange-500/10 text-orange-600 border-orange-500/20",  dot: "bg-orange-500" },
+  { label: "Red",     value: "bg-red-500/10 text-red-600 border-red-500/20",           dot: "bg-red-500" },
+  { label: "Pink",    value: "bg-pink-500/10 text-pink-600 border-pink-500/20",        dot: "bg-pink-500" },
+  { label: "Purple",  value: "bg-purple-500/10 text-purple-600 border-purple-500/20",  dot: "bg-purple-500" },
+  { label: "Indigo",  value: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",  dot: "bg-indigo-500" },
+  { label: "Cyan",    value: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",        dot: "bg-cyan-500" },
+  { label: "Primary", value: "bg-primary/10 text-primary border-primary/20",            dot: "bg-primary" },
+  { label: "Neutral", value: "bg-muted text-muted-foreground border-border",            dot: "bg-muted-foreground" },
 ];
-
-const CATEGORY_TONE: Record<string, string> = {
-  "Capital": "bg-primary/10 text-primary border-primary/20",
-  "Monthly Salary": "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  "Electricity": "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  "Rent": "bg-purple-500/10 text-purple-600 border-purple-500/20",
-  "Medicine": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  "Real Estate": "bg-pink-500/10 text-pink-600 border-pink-500/20",
-  "Equipment": "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
-  "Maintenance": "bg-orange-500/10 text-orange-600 border-orange-500/20",
-  "Marketing": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
-  "Other": "bg-muted text-muted-foreground border-border",
-};
 
 const emptyShareholder = {
   id: "" as string,
@@ -89,16 +86,32 @@ export default function Investment() {
   const [search, setSearch] = useState("");
   const [filterMonth, setFilterMonth] = useState<string>("all");
   const [filterInvestor, setFilterInvestor] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [view, setView] = useState<"list" | "grid">("list");
 
+  const [categories, setCategories] = useState<any[]>([]);
+  const [catMgrOpen, setCatMgrOpen] = useState(false);
+  const [catForm, setCatForm] = useState<{ id: string; name: string; color: string }>({ id: "", name: "", color: COLOR_PRESETS[0].value });
+  const [deleteCatId, setDeleteCatId] = useState<string | null>(null);
+  const [investorMgrOpen, setInvestorMgrOpen] = useState(false);
+
+  const CATEGORY_TONE = useMemo(() => {
+    const m: Record<string, string> = {};
+    categories.forEach(c => { m[c.name] = c.color || "bg-muted text-muted-foreground border-border"; });
+    return m;
+  }, [categories]);
+  const CATEGORIES = useMemo(() => categories.map(c => c.name), [categories]);
+
   const load = async () => {
-    const [s, c] = await Promise.all([
+    const [s, c, cat] = await Promise.all([
       (supabase.from("shareholders" as any) as any).select("*").order("created_at"),
       (supabase.from("shareholder_contributions" as any) as any).select("*").order("paid_on", { ascending: false }),
+      (supabase.from("investment_categories" as any) as any).select("*").order("name"),
     ]);
     if (s.error) toast.error(s.error.message);
     setShareholders(s.data ?? []);
     setContributions(c.data ?? []);
+    setCategories(cat.data ?? []);
   };
   useEffect(() => { load(); }, []);
 
@@ -130,6 +143,7 @@ export default function Investment() {
     const q = search.trim().toLowerCase();
     return contributions.filter(c => {
       if (filterInvestor !== "all" && c.shareholder_id !== filterInvestor) return false;
+      if (filterCategory !== "all" && (c.category || "Capital") !== filterCategory) return false;
       if (filterMonth !== "all" && format(new Date(c.paid_on), "yyyy-MM") !== filterMonth) return false;
       if (q) {
         const sh = shareholders.find(s => s.id === c.shareholder_id);
@@ -138,7 +152,7 @@ export default function Investment() {
       }
       return true;
     });
-  }, [contributions, search, filterMonth, filterInvestor, shareholders]);
+  }, [contributions, search, filterMonth, filterInvestor, filterCategory, shareholders]);
 
   const statusOf = (committed: number, paid: number) => {
     if (committed <= 0) return { label: "Pending", tone: "bg-muted text-muted-foreground border-border" };
@@ -265,7 +279,25 @@ export default function Investment() {
     toast.success("Contribution removed"); setDeleteCId(null); load();
   };
 
-  // ===== Export CSV =====
+  // ===== Category CRUD =====
+  const openNewCat = () => { setCatForm({ id: "", name: "", color: COLOR_PRESETS[0].value }); };
+  const openEditCat = (c: any) => { setCatForm({ id: c.id, name: c.name, color: c.color || COLOR_PRESETS[0].value }); };
+  const saveCat = async () => {
+    if (!catForm.name.trim()) return toast.error("Name is required");
+    const payload = { name: catForm.name.trim(), color: catForm.color };
+    let error;
+    if (catForm.id) ({ error } = await (supabase.from("investment_categories" as any) as any).update(payload).eq("id", catForm.id));
+    else ({ error } = await (supabase.from("investment_categories" as any) as any).insert(payload));
+    if (error) return toast.error(error.message);
+    toast.success(catForm.id ? "Category updated" : "Category added");
+    openNewCat(); load();
+  };
+  const confirmDeleteCat = async () => {
+    if (!deleteCatId) return;
+    const { error } = await (supabase.from("investment_categories" as any) as any).delete().eq("id", deleteCatId);
+    if (error) return toast.error(error.message);
+    toast.success("Category removed"); setDeleteCatId(null); load();
+  };
   const exportCSV = () => {
     const rows = [["Date","Investment","Investor","Category","Amount","Method","Reference","Note"]];
     filteredContrib.forEach(c => {
@@ -295,6 +327,17 @@ export default function Investment() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Investment Dashboard</h1>
           <p className="text-muted-foreground mt-1 text-sm">Capital, shares & contribution tracking</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setInvestorMgrOpen(true)}>
+            <Users className="h-4 w-4 mr-1" />Manage Investors
+          </Button>
+          <Button variant="outline" onClick={() => setCatMgrOpen(true)}>
+            <Tag className="h-4 w-4 mr-1" />Manage Categories
+          </Button>
+          <Button onClick={() => openNewC()} className="clinic-gradient text-primary-foreground">
+            <Plus className="h-4 w-4 mr-1" />Add Investment
+          </Button>
         </div>
       </div>
 
@@ -488,6 +531,13 @@ export default function Investment() {
                 <SelectContent>
                   <SelectItem value="all">All Investors</SelectItem>
                   {shareholders.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Category" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {CATEGORIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                 </SelectContent>
               </Select>
               <div className="flex items-center border rounded-md">
@@ -763,6 +813,146 @@ export default function Investment() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteC} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* CATEGORY MANAGER */}
+      <Dialog open={catMgrOpen} onOpenChange={(o) => { setCatMgrOpen(o); if (!o) openNewCat(); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Tag className="h-5 w-5 text-primary" />Manage Categories</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 md:grid-cols-2 py-2">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">{catForm.id ? "Edit Category" : "Add New Category"}</p>
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })} placeholder="e.g. Utility Bill" />
+              </div>
+              <div className="space-y-2">
+                <Label>Color</Label>
+                <div className="grid grid-cols-6 gap-2">
+                  {COLOR_PRESETS.map(p => (
+                    <button key={p.value} type="button" onClick={() => setCatForm({ ...catForm, color: p.value })}
+                      className={cn("h-9 rounded-md border-2 flex items-center justify-center transition-all",
+                        catForm.color === p.value ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50")}
+                      title={p.label}>
+                      <span className={cn("h-4 w-4 rounded-full", p.dot)} />
+                    </button>
+                  ))}
+                </div>
+                {catForm.name && (
+                  <div className="pt-2"><Badge variant="outline" className={cn("text-xs", catForm.color)}>{catForm.name}</Badge></div>
+                )}
+              </div>
+              <div className="flex gap-2 pt-2">
+                {catForm.id && <Button variant="outline" size="sm" onClick={openNewCat}>Cancel</Button>}
+                <Button size="sm" onClick={saveCat} className="clinic-gradient text-primary-foreground flex-1">
+                  {catForm.id ? "Save" : "Add Category"}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Existing ({categories.length})</p>
+              <div className="border rounded-lg max-h-[340px] overflow-y-auto divide-y">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No categories yet</p>
+                ) : categories.map(c => (
+                  <div key={c.id} className="flex items-center justify-between p-2.5 hover:bg-muted/40">
+                    <Badge variant="outline" className={cn("text-xs", c.color)}>{c.name}</Badge>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditCat(c)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteCatId(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* INVESTOR MANAGER */}
+      <Dialog open={investorMgrOpen} onOpenChange={setInvestorMgrOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Manage Investors</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => { setInvestorMgrOpen(false); openNewSh(); }} className="clinic-gradient text-primary-foreground">
+                <Plus className="h-4 w-4 mr-1" />Add Investor
+              </Button>
+            </div>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Investor</TableHead>
+                    <TableHead>Share %</TableHead>
+                    <TableHead className="text-right">Capital</TableHead>
+                    <TableHead className="text-right">Paid</TableHead>
+                    <TableHead className="text-right">Due</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {shareholders.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No investors</TableCell></TableRow>
+                  ) : shareholders.map((s, idx) => {
+                    const committed = Number(s.committed_capital_usd || 0);
+                    const paid = paidByShareholder[s.id] || 0;
+                    const due = Math.max(0, committed - paid);
+                    return (
+                      <TableRow key={s.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={s.photo_url || undefined} />
+                              <AvatarFallback className="text-primary-foreground text-xs" style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}>
+                                {s.full_name?.[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium">{s.full_name}</p>
+                              <p className="text-[11px] text-muted-foreground">{s.phone || s.email || "—"}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell><Badge variant="outline">{Number(s.share_percent || 0)}%</Badge></TableCell>
+                        <TableCell className="text-right font-semibold">{fmtUSD(committed)}</TableCell>
+                        <TableCell className="text-right text-success font-semibold">{fmtUSD(paid)}</TableCell>
+                        <TableCell className="text-right text-warning font-semibold">{fmtUSD(due)}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setInvestorMgrOpen(false); openEditSh(s); }}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteShId(s.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteCatId} onOpenChange={(o) => !o && setDeleteCatId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this category?</AlertDialogTitle>
+            <AlertDialogDescription>Existing contributions using this category will keep the name but lose its styling.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
