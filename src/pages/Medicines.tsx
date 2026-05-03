@@ -488,7 +488,7 @@ export default function Medicines() {
               <div className="grid grid-cols-3 gap-3 items-end">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Purchase Unit</Label>
-                  <Select value={form.purchase_unit} onValueChange={v => setForm({ ...form, purchase_unit: v, purchase_pack_price: "", cost_price_usd: v === "Pcs" ? form.cost_price_usd : "" })}>
+                  <Select value={form.purchase_unit} onValueChange={v => setForm({ ...form, purchase_unit: v, ...(v === "Pcs" ? {} : { purchase_pack_price: "", cost_price_usd: "" }) })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pcs">Pcs (single)</SelectItem>
