@@ -62,6 +62,9 @@ const emptyContribution = {
   reference: "",
   notes: "",
   slip_url: "",
+  expected_return_usd: "" as any,
+  return_date: "",
+  allocations: [] as { shareholder_id: string; share_percent: any }[],
 };
 
 export default function Investment() {
