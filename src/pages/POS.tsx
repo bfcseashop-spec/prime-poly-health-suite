@@ -496,7 +496,7 @@ export default function POS() {
               <Button variant="outline" onClick={() => checkout(true)} disabled={cart.length === 0}>
                 <Clock className="h-4 w-4 mr-1" />Save as Due
               </Button>
-              <Button onClick={() => checkout(false)} disabled={cart.length === 0 || due > 0.01}>
+              <Button onClick={() => checkout(autoMethod === "due" && !splitMode)} disabled={cart.length === 0 || (due > 0.01 && !(autoMethod === "due" && !splitMode))}>
                 Checkout
               </Button>
             </div>
