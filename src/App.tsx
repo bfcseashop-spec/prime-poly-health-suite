@@ -27,6 +27,7 @@ import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
 import IPD from "./pages/IPD";
 import Staff from "./pages/Staff";
+import Investment from "./pages/Investment";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
