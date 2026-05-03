@@ -59,12 +59,15 @@ const initials = (name: string) =>
 const emptyForm = {
   id: "" as string | "",
   full_name: "", age: "" as any, gender: "", position: "nurse",
-  department: "", phone: "", email: "", address: "",
+  department: "", phone: "", telegram_id: "", email: "", address: "",
   joining_date: "", monthly_salary_usd: "" as any,
   status: "active", qualification: "", notes: "", photo_url: "",
+  day_off: "", leave_from: "", leave_to: "", leave_reason: "",
+  duty_schedule: {} as Record<string, string>,
 };
 
 export default function Staff() {
+  const { user } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<string>("all");
@@ -72,6 +75,8 @@ export default function Staff() {
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewRow, setViewRow] = useState<any | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     const { data, error } = await (supabase.from("staff_members" as any) as any)
@@ -108,18 +113,41 @@ export default function Staff() {
     setForm({
       id: r.id, full_name: r.full_name ?? "", age: r.age ?? "", gender: r.gender ?? "",
       position: r.position ?? "nurse", department: r.department ?? "",
-      phone: r.phone ?? "", email: r.email ?? "", address: r.address ?? "",
+      phone: r.phone ?? "", telegram_id: r.telegram_id ?? "", email: r.email ?? "", address: r.address ?? "",
       joining_date: r.joining_date ?? "", monthly_salary_usd: r.monthly_salary_usd ?? "",
       status: r.status ?? "active", qualification: r.qualification ?? "",
       notes: r.notes ?? "", photo_url: r.photo_url ?? "",
+      day_off: r.day_off ?? "", leave_from: r.leave_from ?? "", leave_to: r.leave_to ?? "",
+      leave_reason: r.leave_reason ?? "", duty_schedule: r.duty_schedule ?? {},
     });
     setOpen(true);
+  };
+
+  const onPickPhoto = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `staff/${user?.id || "anon"}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("staff-photos").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("staff-photos").getPublicUrl(path);
+      setForm(f => ({ ...f, photo_url: data.publicUrl }));
+      toast.success("Photo uploaded");
+    } catch (e: any) {
+      toast.error(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const setDuty = (day: string, val: string) => {
+    setForm(f => ({ ...f, duty_schedule: { ...(f.duty_schedule || {}), [day]: val } }));
   };
 
   const submit = async () => {
     if (!form.full_name.trim()) return toast.error("Full name is required");
     if (!form.position) return toast.error("Position is required");
-    const { data: u } = await supabase.auth.getUser();
     const payload: any = {
       full_name: form.full_name.trim(),
       age: form.age === "" ? null : Number(form.age),
@@ -127,6 +155,7 @@ export default function Staff() {
       position: form.position,
       department: form.department || null,
       phone: form.phone || null,
+      telegram_id: form.telegram_id || null,
       email: form.email || null,
       address: form.address || null,
       joining_date: form.joining_date || null,
@@ -135,12 +164,17 @@ export default function Staff() {
       qualification: form.qualification || null,
       notes: form.notes || null,
       photo_url: form.photo_url || null,
+      day_off: form.day_off || null,
+      leave_from: form.leave_from || null,
+      leave_to: form.leave_to || null,
+      leave_reason: form.leave_reason || null,
+      duty_schedule: form.duty_schedule || {},
     };
     let error;
     if (form.id) {
       ({ error } = await (supabase.from("staff_members" as any) as any).update(payload).eq("id", form.id));
     } else {
-      payload.created_by = u.user?.id ?? null;
+      payload.created_by = user?.id ?? null;
       ({ error } = await (supabase.from("staff_members" as any) as any).insert(payload));
     }
     if (error) return toast.error(error.message);
