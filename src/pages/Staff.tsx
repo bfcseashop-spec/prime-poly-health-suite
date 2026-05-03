@@ -185,7 +185,7 @@ export default function Staff() {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Staff Management</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Doctors, lab technicians and clinic team records</p>
+          <p className="text-muted-foreground mt-1 text-sm">Nurses, lab technicians and clinic team records</p>
         </div>
         <Button onClick={openNew} className="clinic-gradient text-primary-foreground">
           <UserPlus className="h-4 w-4 mr-2" />Add Staff
@@ -194,7 +194,7 @@ export default function Staff() {
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KPI icon={Users} label="Total Staff" value={stats.total} hint="all positions" tone="primary" />
-        <KPI icon={Stethoscope} label="Doctors" value={stats.doctors} tone="success" />
+        <KPI icon={Users} label="Nurses" value={stats.nurses} tone="success" />
         <KPI icon={FlaskConical} label="Lab Technicians" value={stats.labTechs} tone="purple" />
         <KPI icon={Wallet} label="Monthly Payroll" value={fmtUSD(stats.payroll)} hint="active staff" tone="warning" />
       </div>
