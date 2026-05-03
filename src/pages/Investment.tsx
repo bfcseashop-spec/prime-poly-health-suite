@@ -97,6 +97,28 @@ export default function Investment() {
   const [catForm, setCatForm] = useState<{ id: string; name: string; color: string }>({ id: "", name: "", color: COLOR_PRESETS[0].value });
   const [deleteCatId, setDeleteCatId] = useState<string | null>(null);
   const [investorMgrOpen, setInvestorMgrOpen] = useState(false);
+  const [quickInv, setQuickInv] = useState({ full_name: "", email: "", phone: "", notes: "" });
+  const [quickInvSaving, setQuickInvSaving] = useState(false);
+  const addQuickInvestor = async () => {
+    if (!quickInv.full_name.trim()) return toast.error("Name is required");
+    setQuickInvSaving(true);
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await (supabase.from("shareholders" as any) as any).insert({
+      full_name: quickInv.full_name.trim(),
+      email: quickInv.email || null,
+      phone: quickInv.phone || null,
+      notes: quickInv.notes || null,
+      share_percent: 0,
+      committed_capital_usd: 0,
+      active: true,
+      created_by: u.user?.id ?? null,
+    });
+    setQuickInvSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Investor added");
+    setQuickInv({ full_name: "", email: "", phone: "", notes: "" });
+    load();
+  };
 
   const CATEGORY_TONE = useMemo(() => {
     const m: Record<string, string> = {};
