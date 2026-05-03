@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import {
   PiggyBank, Receipt, CircleCheck, CircleAlert, Pencil, Trash2,
   Plus, Search, Calendar, Download, List, LayoutGrid, Eye, ImageIcon, X, Upload,
+  Users, Tag, Settings2,
 } from "lucide-react";
 
 const PIE_COLORS = [
@@ -29,23 +30,19 @@ const PIE_COLORS = [
   "hsl(280,65%,60%)","hsl(340,75%,55%)","hsl(190,80%,45%)","hsl(25,85%,55%)",
 ];
 
-const CATEGORIES = [
-  "Capital", "Monthly Salary", "Electricity", "Rent", "Medicine",
-  "Real Estate", "Equipment", "Maintenance", "Marketing", "Other",
+const COLOR_PRESETS = [
+  { label: "Blue",    value: "bg-blue-500/10 text-blue-600 border-blue-500/20",       dot: "bg-blue-500" },
+  { label: "Green",   value: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", dot: "bg-emerald-500" },
+  { label: "Amber",   value: "bg-amber-500/10 text-amber-600 border-amber-500/20",     dot: "bg-amber-500" },
+  { label: "Orange",  value: "bg-orange-500/10 text-orange-600 border-orange-500/20",  dot: "bg-orange-500" },
+  { label: "Red",     value: "bg-red-500/10 text-red-600 border-red-500/20",           dot: "bg-red-500" },
+  { label: "Pink",    value: "bg-pink-500/10 text-pink-600 border-pink-500/20",        dot: "bg-pink-500" },
+  { label: "Purple",  value: "bg-purple-500/10 text-purple-600 border-purple-500/20",  dot: "bg-purple-500" },
+  { label: "Indigo",  value: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",  dot: "bg-indigo-500" },
+  { label: "Cyan",    value: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",        dot: "bg-cyan-500" },
+  { label: "Primary", value: "bg-primary/10 text-primary border-primary/20",            dot: "bg-primary" },
+  { label: "Neutral", value: "bg-muted text-muted-foreground border-border",            dot: "bg-muted-foreground" },
 ];
-
-const CATEGORY_TONE: Record<string, string> = {
-  "Capital": "bg-primary/10 text-primary border-primary/20",
-  "Monthly Salary": "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  "Electricity": "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  "Rent": "bg-purple-500/10 text-purple-600 border-purple-500/20",
-  "Medicine": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  "Real Estate": "bg-pink-500/10 text-pink-600 border-pink-500/20",
-  "Equipment": "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
-  "Maintenance": "bg-orange-500/10 text-orange-600 border-orange-500/20",
-  "Marketing": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
-  "Other": "bg-muted text-muted-foreground border-border",
-};
 
 const emptyShareholder = {
   id: "" as string,
