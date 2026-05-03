@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 
 const POSITIONS = [
-  { value: "doctor", label: "Doctor", icon: Stethoscope, color: "bg-violet-50 text-violet-700 border-violet-200" },
   { value: "lab_technician", label: "Lab Technologist", icon: FlaskConical, color: "bg-slate-100 text-slate-700 border-slate-200" },
   { value: "nurse", label: "Nurse", icon: Users, color: "bg-pink-50 text-pink-700 border-pink-200" },
   { value: "pharmacist", label: "Pharmacist", icon: Briefcase, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -56,7 +55,7 @@ const initials = (name: string) =>
 
 const emptyForm = {
   id: "" as string | "",
-  full_name: "", age: "" as any, gender: "", position: "doctor",
+  full_name: "", age: "" as any, gender: "", position: "nurse",
   department: "", phone: "", email: "", address: "",
   joining_date: "", monthly_salary_usd: "" as any,
   status: "active", qualification: "", notes: "", photo_url: "",
@@ -96,7 +95,7 @@ export default function Staff() {
 
   const stats = useMemo(() => ({
     total: rows.length,
-    doctors: rows.filter(r => r.position === "doctor").length,
+    nurses: rows.filter(r => r.position === "nurse").length,
     labTechs: rows.filter(r => r.position === "lab_technician").length,
     payroll: rows.filter(r => r.status === "active").reduce((s, r) => s + Number(r.monthly_salary_usd || 0), 0),
   }), [rows]);
@@ -105,7 +104,7 @@ export default function Staff() {
   const openEdit = (r: any) => {
     setForm({
       id: r.id, full_name: r.full_name ?? "", age: r.age ?? "", gender: r.gender ?? "",
-      position: r.position ?? "doctor", department: r.department ?? "",
+      position: r.position ?? "nurse", department: r.department ?? "",
       phone: r.phone ?? "", email: r.email ?? "", address: r.address ?? "",
       joining_date: r.joining_date ?? "", monthly_salary_usd: r.monthly_salary_usd ?? "",
       status: r.status ?? "active", qualification: r.qualification ?? "",
@@ -186,7 +185,7 @@ export default function Staff() {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Staff Management</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Doctors, lab technicians and clinic team records</p>
+          <p className="text-muted-foreground mt-1 text-sm">Nurses, lab technicians and clinic team records</p>
         </div>
         <Button onClick={openNew} className="clinic-gradient text-primary-foreground">
           <UserPlus className="h-4 w-4 mr-2" />Add Staff
@@ -195,7 +194,7 @@ export default function Staff() {
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KPI icon={Users} label="Total Staff" value={stats.total} hint="all positions" tone="primary" />
-        <KPI icon={Stethoscope} label="Doctors" value={stats.doctors} tone="success" />
+        <KPI icon={Users} label="Nurses" value={stats.nurses} tone="success" />
         <KPI icon={FlaskConical} label="Lab Technicians" value={stats.labTechs} tone="purple" />
         <KPI icon={Wallet} label="Monthly Payroll" value={fmtUSD(stats.payroll)} hint="active staff" tone="warning" />
       </div>
@@ -214,7 +213,7 @@ export default function Staff() {
           <TabsTrigger value="all">All ({rows.length})</TabsTrigger>
           {POSITIONS.map(p => {
             const count = rows.filter(r => r.position === p.value).length;
-            if (count === 0 && p.value !== "doctor" && p.value !== "lab_technician") return null;
+            if (count === 0 && p.value !== "nurse" && p.value !== "lab_technician") return null;
             return (
               <TabsTrigger key={p.value} value={p.value}>
                 <p.icon className="h-3.5 w-3.5 mr-1.5" />{p.label} ({count})
