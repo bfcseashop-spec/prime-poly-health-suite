@@ -58,7 +58,7 @@ export default function POS() {
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("medicine");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [discount, setDiscount] = useState(0);
+  
   const [patientId, setPatientId] = useState<string | undefined>();
   const [insuranceCard, setInsuranceCard] = useState<any | null>(null);
   const [cardInput, setCardInput] = useState("");
