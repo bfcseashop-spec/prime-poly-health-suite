@@ -36,6 +36,7 @@ const PAYMENTS = [
   { value: "acleda", label: "ACLEDA Bank" },
   { value: "paypal", label: "PayPal" },
   { value: "visa", label: "Card", icon: CreditCard },
+  { value: "due", label: "Due (Unpaid)", icon: Clock },
 ];
 
 const CAT_META: Record<string, { label: string; icon: any; color: string }> = {
@@ -64,6 +65,7 @@ export default function POS() {
   const [insuranceCard, setInsuranceCard] = useState<any | null>(null);
   const [cardInput, setCardInput] = useState("");
   const [notes, setNotes] = useState("");
+  const [referrer, setReferrer] = useState("");
   const [discountType, setDiscountType] = useState<"none" | "flat" | "percent">("none");
   const [discountValue, setDiscountValue] = useState(0);
   const [splitMode, setSplitMode] = useState(false);
@@ -127,7 +129,7 @@ export default function POS() {
     return 0;
   }, [discountType, discountValue, subtotal]);
   const total = Math.max(0, +(subtotal - discount - insuranceDiscount).toFixed(2));
-  const effectiveSplits = useMemo<SplitPayment[]>(() => splitMode ? splits : [{ id: "auto", method: autoMethod, amount: total }], [splitMode, splits, autoMethod, total]);
+  const effectiveSplits = useMemo<SplitPayment[]>(() => splitMode ? splits : (autoMethod === "due" ? [] : [{ id: "auto", method: autoMethod, amount: total }]), [splitMode, splits, autoMethod, total]);
   const totalPaid = useMemo(() => effectiveSplits.reduce((s, p) => s + (Number(p.amount) || 0), 0), [effectiveSplits]);
   const due = Math.max(0, +(total - totalPaid).toFixed(2));
 
@@ -285,11 +287,12 @@ export default function POS() {
     const inv = {
       invoice, items: cart, subtotal, discount: totalDiscount, total, paid, due: remaining, status,
       splits: validSplits, patient: patients.find(p => p.id === patientId), notes,
+      referrer,
       created_at: new Date(),
     };
     setLastInvoice(inv);
     setPreviewOpen(true);
-    setCart([]); setDiscountType("none"); setDiscountValue(0); setPatientId(undefined); setInsuranceCard(null); setNotes("");
+    setCart([]); setDiscountType("none"); setDiscountValue(0); setPatientId(undefined); setInsuranceCard(null); setNotes(""); setReferrer("");
     setSplits([{ id: crypto.randomUUID(), method: "cash", amount: 0 }]); setSplitMode(false); setAutoMethod("cash");
     load();
   };
@@ -387,6 +390,11 @@ export default function POS() {
                   <SelectTrigger className="h-8"><SelectValue placeholder="Walk-in" /></SelectTrigger>
                   <SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.patient_code} — {p.full_name}</SelectItem>)}</SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1"><Stethoscope className="h-3 w-3" />Referrer Doctor</Label>
+                <Input value={referrer} onChange={e => setReferrer(e.target.value)} placeholder="Dr. name (optional)…" className="h-8" />
               </div>
 
               <div className="space-y-1">
@@ -488,7 +496,7 @@ export default function POS() {
               <Button variant="outline" onClick={() => checkout(true)} disabled={cart.length === 0}>
                 <Clock className="h-4 w-4 mr-1" />Save as Due
               </Button>
-              <Button onClick={() => checkout(false)} disabled={cart.length === 0 || due > 0.01}>
+              <Button onClick={() => checkout(autoMethod === "due" && !splitMode)} disabled={cart.length === 0 || (due > 0.01 && !(autoMethod === "due" && !splitMode))}>
                 Checkout
               </Button>
             </div>
