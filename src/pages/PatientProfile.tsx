@@ -112,8 +112,7 @@ export default function PatientProfile() {
 
       <SummaryPanel records={records} labs={labs} visits={visits} rx={rx} />
 
-
-        <TabsList className="flex-wrap h-auto">
+      <Tabs defaultValue="records">
           <TabsTrigger value="records"><ClipboardList className="h-4 w-4 mr-1" />Medical Records</TabsTrigger>
           <TabsTrigger value="lab"><FlaskConical className="h-4 w-4 mr-1" />Lab Reports</TabsTrigger>
           <TabsTrigger value="visits">Visit History</TabsTrigger>
