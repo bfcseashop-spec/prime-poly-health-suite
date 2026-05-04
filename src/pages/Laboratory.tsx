@@ -304,7 +304,15 @@ export default function Laboratory() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2"><FlaskConical className="h-7 w-7 text-primary" />Laboratory</h1>
           <p className="text-muted-foreground mt-1 text-sm">Manage tests, orders, sample collection and results</p>
         </div>
-        <Button onClick={() => setNewDlg(true)}><Plus className="h-4 w-4 mr-2" />New Lab Order</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => { setLookupName(""); setLookupDlg("unit"); }}>
+            <Plus className="h-4 w-4 mr-1" />Add Unit
+          </Button>
+          <Button variant="outline" onClick={() => { setLookupName(""); setLookupDlg("category"); }}>
+            <Plus className="h-4 w-4 mr-1" />Add Category
+          </Button>
+          <Button onClick={() => setNewDlg(true)}><Plus className="h-4 w-4 mr-2" />New Lab Order</Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
