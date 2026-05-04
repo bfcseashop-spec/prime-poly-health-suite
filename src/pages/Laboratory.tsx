@@ -600,7 +600,7 @@ export default function Laboratory() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1"><Label className="text-xs">Code</Label><Input value={testDlg.code ?? ""} onChange={e => setTestDlg({ ...testDlg, code: e.target.value })} /></div>
                 <div className="space-y-1 col-span-2"><Label className="text-xs">Test Name *</Label><Input value={testDlg.name ?? ""} onChange={e => setTestDlg({ ...testDlg, name: e.target.value })} /></div>
-                <div className="space-y-1 col-span-2"><Label className="text-xs">Sample Type</Label><Input placeholder="Blood / Urine…" value={testDlg.sample_type ?? ""} onChange={e => setTestDlg({ ...testDlg, sample_type: e.target.value })} /></div>
+                <div className="space-y-1 col-span-2"><Label className="text-xs">Sample Type</Label><Input list="sample-type-list" placeholder="Blood / Urine…" value={testDlg.sample_type ?? ""} onChange={e => setTestDlg({ ...testDlg, sample_type: e.target.value })} /></div>
                 <div className="space-y-1"><Label className="text-xs">Price (USD)</Label><Input type="number" step="0.01" value={testDlg.price_usd ?? 0} onChange={e => setTestDlg({ ...testDlg, price_usd: Number(e.target.value) })} /></div>
                 <div className="space-y-1"><Label className="text-xs">Turnaround (hrs)</Label><Input type="number" value={testDlg.turnaround_hours ?? 24} onChange={e => setTestDlg({ ...testDlg, turnaround_hours: Number(e.target.value) })} /></div>
                 <div className="col-span-2 flex items-center gap-2"><Switch checked={testDlg.active ?? true} onCheckedChange={v => setTestDlg({ ...testDlg, active: v })} /><Label className="text-sm">Active</Label></div>
@@ -800,6 +800,9 @@ export default function Laboratory() {
       </Dialog>
 
       {/* Datalists for parameter row autocomplete */}
+      <datalist id="sample-type-list">
+        {sampleTypes.map(s => <option key={s.id} value={s.name} />)}
+      </datalist>
       <datalist id="param-unit-list">
         {paramUnits.map(u => <option key={u.id} value={u.name} />)}
       </datalist>
