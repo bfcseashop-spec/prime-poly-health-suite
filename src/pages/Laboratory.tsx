@@ -475,7 +475,14 @@ export default function Laboratory() {
                           <TableCell className="text-sm">{p ? `${p.patient_code} — ${p.full_name}` : "—"}{p?.phone && <p className="text-xs text-muted-foreground">{p.phone}</p>}</TableCell>
                           <TableCell><Badge variant={o.priority === "stat" ? "destructive" : o.priority === "urgent" ? "default" : "secondary"}>{o.priority}</Badge></TableCell>
                           <TableCell className="text-xs">{samples.join(", ") || "—"}</TableCell>
-                          <TableCell><SampleBadge s={o.sample_status} /></TableCell>
+                          <TableCell>
+                            <Select value={o.sample_status} onValueChange={(v) => changeSampleStatus(o.id, v)}>
+                              <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {SAMPLE_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
