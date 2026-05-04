@@ -808,16 +808,20 @@ export default function Laboratory() {
         {paramCats.map(c => <option key={c.id} value={c.name} />)}
       </datalist>
 
-      {/* Add Unit / Category dialog */}
+      <datalist id="param-name-list">
+        {paramNames.map(n => <option key={n.id} value={n.name} />)}
+      </datalist>
+
+      {/* Add Unit / Category / Parameter dialog */}
       <Dialog open={!!lookupDlg} onOpenChange={o => !o && setLookupDlg(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{lookupDlg === "unit" ? "Manage Units" : "Manage Categories"}</DialogTitle>
+            <DialogTitle>{lookupTitle}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-2">
               <Input
-                placeholder={lookupDlg === "unit" ? "e.g. mg/dL" : "e.g. CBC"}
+                placeholder={lookupPlaceholder}
                 value={lookupName}
                 onChange={e => setLookupName(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && addLookup()}
@@ -825,9 +829,9 @@ export default function Laboratory() {
               <Button onClick={addLookup}><Plus className="h-4 w-4 mr-1" />Add</Button>
             </div>
             <div className="border rounded-md max-h-72 overflow-y-auto divide-y">
-              {(lookupDlg === "unit" ? paramUnits : paramCats).length === 0 ? (
+              {lookupList.length === 0 ? (
                 <div className="p-4 text-center text-xs text-muted-foreground">No items yet</div>
-              ) : (lookupDlg === "unit" ? paramUnits : paramCats).map(it => (
+              ) : lookupList.map(it => (
                 <div key={it.id} className="flex items-center justify-between px-3 py-2 text-sm">
                   <span>{it.name}</span>
                   <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeLookup(lookupDlg!, it.id)}>
