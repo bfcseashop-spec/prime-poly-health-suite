@@ -17,7 +17,11 @@ import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
 import Barcode from "react-barcode";
 
-type Test = { id: string; code: string; name: string; category: string; sample_type: string | null; unit: string | null; reference_range: string | null; price_usd: number; turnaround_hours: number | null; active: boolean; description?: string | null };
+export type ReportParameter = { name: string; category: string; unit: string; reference_range: string; result_type: string };
+type Test = { id: string; code: string; name: string; category: string; sample_type: string | null; unit: string | null; reference_range: string | null; price_usd: number; turnaround_hours: number | null; active: boolean; description?: string | null; parameters?: ReportParameter[] | null };
+
+const RESULT_TYPES = ["Numeric", "Text", "Positive/Negative", "Reactive/Non-Reactive", "Present/Absent", "Dropdown"];
+const emptyParam = (): ReportParameter => ({ name: "", category: "", unit: "", reference_range: "", result_type: "Numeric" });
 type Patient = { id: string; full_name: string; patient_code: string; phone: string | null; dob: string | null; gender: string | null };
 
 const CATS = ["hematology", "biochemistry", "endocrinology", "urinalysis", "microbiology", "serology", "immunology", "general"];
