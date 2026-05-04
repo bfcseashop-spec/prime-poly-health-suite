@@ -68,6 +68,14 @@ export default function Laboratory() {
   const [newNotes, setNewNotes] = useState("");
   const [newSelected, setNewSelected] = useState<Test[]>([]);
 
+  // Sample collection tab
+  const [sampleQ, setSampleQ] = useState("");
+  const [sampleStatus, setSampleStatus] = useState("all");
+  const [samplePage, setSamplePage] = useState(1);
+  const [samplePerPage, setSamplePerPage] = useState(10);
+  const [sampleSelected, setSampleSelected] = useState<Set<string>>(new Set());
+  const [sampleEdit, setSampleEdit] = useState<any | null>(null);
+
   // Param lookups
   type LookupKind = "unit" | "category" | "name" | "sample";
   const LOOKUP_TBL: Record<LookupKind, string> = {
