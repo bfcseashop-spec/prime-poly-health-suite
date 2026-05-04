@@ -212,7 +212,15 @@ export default function Laboratory() {
   const openOrderDetail = async (o: any) => {
     setOpenOrder(o);
     const { data } = await supabase.from("lab_order_items" as any).select("*").eq("order_id", o.id);
-    setOpenItems((data as any[]) ?? []);
+    const items = ((data as any[]) ?? []).map((it: any) => {
+      const t = tests.find(tt => tt.id === it.test_id) || tests.find(tt => tt.name === it.test_name);
+      return {
+        ...it,
+        result_unit: it.result_unit || t?.unit || "",
+        reference_range: it.reference_range || t?.reference_range || "",
+      };
+    });
+    setOpenItems(items);
   };
   const updateItem = (idx: number, patch: any) => {
     setOpenItems(items => items.map((it, i) => i === idx ? { ...it, ...patch } : it));
