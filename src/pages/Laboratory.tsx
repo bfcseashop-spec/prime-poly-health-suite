@@ -331,9 +331,6 @@ export default function Laboratory() {
           <Button variant="outline" onClick={() => { setLookupName(""); setLookupDlg("category"); }}>
             <Plus className="h-4 w-4 mr-1" />Add Category
           </Button>
-          <Button variant="outline" onClick={() => setTestDlg({ active: true, category: "general", price_usd: 0, turnaround_hours: 24 })}>
-            <Plus className="h-4 w-4 mr-1" />Add Test
-          </Button>
           <Button onClick={() => setNewDlg(true)}><Plus className="h-4 w-4 mr-2" />New Lab Order</Button>
         </div>
       </div>
@@ -346,11 +343,18 @@ export default function Laboratory() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="orders"><ClipboardList className="h-4 w-4 mr-2" />Orders</TabsTrigger>
-          <TabsTrigger value="samples"><Beaker className="h-4 w-4 mr-2" />Sample Collection</TabsTrigger>
-          <TabsTrigger value="catalog"><TestTube className="h-4 w-4 mr-2" />Test Catalog</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <TabsList>
+            <TabsTrigger value="orders"><ClipboardList className="h-4 w-4 mr-2" />Orders</TabsTrigger>
+            <TabsTrigger value="samples"><Beaker className="h-4 w-4 mr-2" />Sample Collection</TabsTrigger>
+            <TabsTrigger value="catalog"><TestTube className="h-4 w-4 mr-2" />Test Catalog</TabsTrigger>
+          </TabsList>
+          {tab === "catalog" && (
+            <Button size="sm" onClick={() => setTestDlg({ active: true, category: "general", price_usd: 0, turnaround_hours: 24 })}>
+              <Plus className="h-4 w-4 mr-1" />Add Test
+            </Button>
+          )}
+        </div>
 
         <TabsContent value="orders" className="mt-4">
           <Card className="shadow-soft">
