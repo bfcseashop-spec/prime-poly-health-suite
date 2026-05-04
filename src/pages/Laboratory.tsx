@@ -460,11 +460,11 @@ export default function Laboratory() {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Order</TableHead><TableHead>Patient</TableHead><TableHead>Priority</TableHead>
-                  <TableHead>Tests</TableHead><TableHead>Sample Status</TableHead><TableHead></TableHead>
+                  <TableHead>Tests</TableHead><TableHead>Sample Status</TableHead><TableHead>Report Status</TableHead><TableHead></TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {orders.filter(o => o.sample_status !== "received").length === 0 ?
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-12">All samples collected ✓</TableCell></TableRow> :
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-12">All samples collected ✓</TableCell></TableRow> :
                     orders.filter(o => o.sample_status !== "received").map(o => {
                       const p = patients[o.patient_id];
                       const its = orderItems[o.id] ?? [];
@@ -483,6 +483,7 @@ export default function Laboratory() {
                               </SelectContent>
                             </Select>
                           </TableCell>
+                          <TableCell><StatusBadge s={o.status} /></TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
