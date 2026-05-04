@@ -66,26 +66,30 @@ export default function Laboratory() {
   const [newSelected, setNewSelected] = useState<Test[]>([]);
 
   // Param lookups
-  type LookupKind = "unit" | "category" | "name";
+  type LookupKind = "unit" | "category" | "name" | "sample";
   const LOOKUP_TBL: Record<LookupKind, string> = {
     unit: "lab_param_units",
     category: "lab_param_categories",
     name: "lab_param_names",
+    sample: "lab_sample_types",
   };
   const [paramUnits, setParamUnits] = useState<{id:string;name:string}[]>([]);
   const [paramCats, setParamCats] = useState<{id:string;name:string}[]>([]);
   const [paramNames, setParamNames] = useState<{id:string;name:string}[]>([]);
+  const [sampleTypes, setSampleTypes] = useState<{id:string;name:string}[]>([]);
   const [lookupDlg, setLookupDlg] = useState<LookupKind | null>(null);
   const [lookupName, setLookupName] = useState("");
   const loadLookups = async () => {
-    const [u, c, n] = await Promise.all([
+    const [u, c, n, s] = await Promise.all([
       supabase.from("lab_param_units" as any).select("id,name").order("name"),
       supabase.from("lab_param_categories" as any).select("id,name").order("name"),
       supabase.from("lab_param_names" as any).select("id,name").order("name"),
+      supabase.from("lab_sample_types" as any).select("id,name").order("name"),
     ]);
     setParamUnits((u.data as any) ?? []);
     setParamCats((c.data as any) ?? []);
     setParamNames((n.data as any) ?? []);
+    setSampleTypes((s.data as any) ?? []);
   };
   const addLookup = async () => {
     const n = lookupName.trim();
@@ -100,9 +104,9 @@ export default function Laboratory() {
     if (error) return toast.error(error.message);
     loadLookups();
   };
-  const lookupList = lookupDlg === "unit" ? paramUnits : lookupDlg === "category" ? paramCats : paramNames;
-  const lookupTitle = lookupDlg === "unit" ? "Manage Units" : lookupDlg === "category" ? "Manage Categories" : "Manage Parameter Names";
-  const lookupPlaceholder = lookupDlg === "unit" ? "e.g. mg/dL" : lookupDlg === "category" ? "e.g. CBC" : "e.g. Hemoglobin";
+  const lookupList = lookupDlg === "unit" ? paramUnits : lookupDlg === "category" ? paramCats : lookupDlg === "sample" ? sampleTypes : paramNames;
+  const lookupTitle = lookupDlg === "unit" ? "Manage Units" : lookupDlg === "category" ? "Manage Categories" : lookupDlg === "sample" ? "Manage Sample Types" : "Manage Parameter Names";
+  const lookupPlaceholder = lookupDlg === "unit" ? "e.g. mg/dL" : lookupDlg === "category" ? "e.g. CBC" : lookupDlg === "sample" ? "e.g. Blood / Urine" : "e.g. Hemoglobin";
 
   const loadTests = async () => {
     const { data } = await supabase.from("lab_tests" as any).select("*").order("name");
