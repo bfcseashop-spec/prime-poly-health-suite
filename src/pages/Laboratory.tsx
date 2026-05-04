@@ -318,6 +318,9 @@ export default function Laboratory() {
           <Button variant="outline" onClick={() => { setLookupName(""); setLookupDlg("unit"); }}>
             <Plus className="h-4 w-4 mr-1" />Add Unit
           </Button>
+          <Button variant="outline" onClick={() => { setLookupName(""); setLookupDlg("name"); }}>
+            <Plus className="h-4 w-4 mr-1" />Add Parameter
+          </Button>
           <Button variant="outline" onClick={() => { setLookupName(""); setLookupDlg("category"); }}>
             <Plus className="h-4 w-4 mr-1" />Add Category
           </Button>
