@@ -328,15 +328,30 @@ export default function Laboratory() {
     const m = map[s] ?? map.pending; const I = m.I;
     return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${m.c}`}><I className="h-3 w-3" />{s.replace("_", " ")}</span>;
   };
+  const SAMPLE_STATUSES = ["pending", "collected", "received", "approved", "rejected"];
   const SampleBadge = ({ s }: { s: string }) => {
     const map: any = {
       pending: "bg-muted text-muted-foreground border-border",
       collected: "bg-blue-500/15 text-blue-600 border-blue-500/30",
       received: "bg-success/15 text-success border-success/30",
+      approved: "bg-success/15 text-success border-success/30",
       rejected: "bg-destructive/15 text-destructive border-destructive/30",
     };
     return <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${map[s] ?? map.pending}`}>{s}</span>;
   };
+
+  const changeSampleStatus = async (orderId: string, status: string) => {
+    const patch: any = { sample_status: status };
+    if (status === "collected" || status === "received" || status === "approved") {
+      patch.sample_collected_at = new Date().toISOString();
+      patch.sample_collected_by = user?.id;
+    }
+    const { error } = await supabase.from("lab_orders" as any).update(patch).eq("id", orderId);
+    if (error) return toast.error(error.message);
+    toast.success(`Sample ${status}`);
+    loadOrders();
+  };
+
 
   return (
     <div className="space-y-5">
@@ -460,7 +475,14 @@ export default function Laboratory() {
                           <TableCell className="text-sm">{p ? `${p.patient_code} — ${p.full_name}` : "—"}{p?.phone && <p className="text-xs text-muted-foreground">{p.phone}</p>}</TableCell>
                           <TableCell><Badge variant={o.priority === "stat" ? "destructive" : o.priority === "urgent" ? "default" : "secondary"}>{o.priority}</Badge></TableCell>
                           <TableCell className="text-xs">{samples.join(", ") || "—"}</TableCell>
-                          <TableCell><SampleBadge s={o.sample_status} /></TableCell>
+                          <TableCell>
+                            <Select value={o.sample_status} onValueChange={(v) => changeSampleStatus(o.id, v)}>
+                              <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {SAMPLE_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
