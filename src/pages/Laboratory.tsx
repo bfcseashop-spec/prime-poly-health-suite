@@ -237,6 +237,22 @@ export default function Laboratory() {
     loadOrders();
   };
 
+  const deleteOrder = async (id: string) => {
+    if (!confirm("Delete this lab order? This cannot be undone.")) return;
+    await supabase.from("lab_order_items" as any).delete().eq("order_id", id);
+    const { error } = await supabase.from("lab_orders" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Order deleted");
+    loadOrders();
+  };
+
+  const printOrderBarcode = (o: any) => {
+    const p = patients[o.patient_id];
+    const its = orderItems[o.id] ?? [];
+    const samples = Array.from(new Set(its.map((i: any) => i.sample_type).filter(Boolean)));
+    printBarcodes([{ code: o.order_no, name: `${p?.full_name ?? "Patient"} — ${samples.join(", ") || "Sample"}` }], `Barcode ${o.order_no}`);
+  };
+
   const updateSample = async (status: string) => {
     if (!openOrder) return;
     const patch: any = { sample_status: status };
