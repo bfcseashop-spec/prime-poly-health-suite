@@ -237,6 +237,22 @@ export default function Laboratory() {
     loadOrders();
   };
 
+  const deleteOrder = async (id: string) => {
+    if (!confirm("Delete this lab order? This cannot be undone.")) return;
+    await supabase.from("lab_order_items" as any).delete().eq("order_id", id);
+    const { error } = await supabase.from("lab_orders" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Order deleted");
+    loadOrders();
+  };
+
+  const printOrderBarcode = (o: any) => {
+    const p = patients[o.patient_id];
+    const its = orderItems[o.id] ?? [];
+    const samples = Array.from(new Set(its.map((i: any) => i.sample_type).filter(Boolean)));
+    printBarcodes([{ code: o.order_no, name: `${p?.full_name ?? "Patient"} — ${samples.join(", ") || "Sample"}` }], `Barcode ${o.order_no}`);
+  };
+
   const updateSample = async (status: string) => {
     if (!openOrder) return;
     const patch: any = { sample_status: status };
@@ -445,7 +461,20 @@ export default function Laboratory() {
                           <TableCell><Badge variant={o.priority === "stat" ? "destructive" : o.priority === "urgent" ? "default" : "secondary"}>{o.priority}</Badge></TableCell>
                           <TableCell className="text-xs">{samples.join(", ") || "—"}</TableCell>
                           <TableCell><SampleBadge s={o.sample_status} /></TableCell>
-                          <TableCell><Button size="sm" variant="outline" onClick={() => openOrderDetail(o)}>Manage</Button></TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openOrderDetail(o)}><Eye className="mr-2 h-4 w-4" />View</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openOrderDetail(o)}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => printOrderBarcode(o)}><BarcodeIcon className="mr-2 h-4 w-4" />Print Barcode</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => deleteOrder(o.id)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
