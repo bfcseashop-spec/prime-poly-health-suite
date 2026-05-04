@@ -464,7 +464,7 @@ export default function Laboratory() {
                 </TableRow></TableHeader>
                 <TableBody>
                   {orders.filter(o => o.sample_status !== "received").length === 0 ?
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-12">All samples collected ✓</TableCell></TableRow> :
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-12">All samples collected ✓</TableCell></TableRow> :
                     orders.filter(o => o.sample_status !== "received").map(o => {
                       const p = patients[o.patient_id];
                       const its = orderItems[o.id] ?? [];
