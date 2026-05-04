@@ -121,7 +121,7 @@ export default function Laboratory() {
     setAllPatients((data as any[]) ?? []);
   };
 
-  useEffect(() => { loadTests(); loadOrders(); loadAllPatients(); }, []);
+  useEffect(() => { loadTests(); loadOrders(); loadAllPatients(); loadLookups(); }, []);
 
   // ---- Catalog ----
   const filteredTests = useMemo(() => tests.filter(t => {
