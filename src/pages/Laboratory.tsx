@@ -786,6 +786,47 @@ export default function Laboratory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Datalists for parameter row autocomplete */}
+      <datalist id="param-unit-list">
+        {paramUnits.map(u => <option key={u.id} value={u.name} />)}
+      </datalist>
+      <datalist id="param-cat-list">
+        {paramCats.map(c => <option key={c.id} value={c.name} />)}
+      </datalist>
+
+      {/* Add Unit / Category dialog */}
+      <Dialog open={!!lookupDlg} onOpenChange={o => !o && setLookupDlg(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{lookupDlg === "unit" ? "Manage Units" : "Manage Categories"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder={lookupDlg === "unit" ? "e.g. mg/dL" : "e.g. CBC"}
+                value={lookupName}
+                onChange={e => setLookupName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addLookup()}
+              />
+              <Button onClick={addLookup}><Plus className="h-4 w-4 mr-1" />Add</Button>
+            </div>
+            <div className="border rounded-md max-h-72 overflow-y-auto divide-y">
+              {(lookupDlg === "unit" ? paramUnits : paramCats).length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground">No items yet</div>
+              ) : (lookupDlg === "unit" ? paramUnits : paramCats).map(it => (
+                <div key={it.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span>{it.name}</span>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeLookup(lookupDlg!, it.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setLookupDlg(null)}>Done</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
