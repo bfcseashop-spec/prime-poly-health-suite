@@ -461,7 +461,20 @@ export default function Laboratory() {
                           <TableCell><Badge variant={o.priority === "stat" ? "destructive" : o.priority === "urgent" ? "default" : "secondary"}>{o.priority}</Badge></TableCell>
                           <TableCell className="text-xs">{samples.join(", ") || "—"}</TableCell>
                           <TableCell><SampleBadge s={o.sample_status} /></TableCell>
-                          <TableCell><Button size="sm" variant="outline" onClick={() => openOrderDetail(o)}>Manage</Button></TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openOrderDetail(o)}><Eye className="mr-2 h-4 w-4" />View</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openOrderDetail(o)}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => printOrderBarcode(o)}><BarcodeIcon className="mr-2 h-4 w-4" />Print Barcode</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => deleteOrder(o.id)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
