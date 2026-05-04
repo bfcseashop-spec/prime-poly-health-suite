@@ -109,6 +109,7 @@ export default function Laboratory() {
       reference_range: testDlg.reference_range || null,
       price_usd: Number(testDlg.price_usd ?? 0), turnaround_hours: Number(testDlg.turnaround_hours ?? 24),
       active: testDlg.active ?? true,
+      parameters: (testDlg.parameters ?? []).filter(p => p.name?.trim()),
     };
     const q: any = testDlg.id
       ? supabase.from("lab_tests" as any).update(payload).eq("id", testDlg.id)
