@@ -460,7 +460,7 @@ export default function Laboratory() {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Order</TableHead><TableHead>Patient</TableHead><TableHead>Priority</TableHead>
-                  <TableHead>Tests</TableHead><TableHead>Sample Status</TableHead><TableHead></TableHead>
+                  <TableHead>Tests</TableHead><TableHead>Sample Status</TableHead><TableHead>Report Status</TableHead><TableHead></TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {orders.filter(o => o.sample_status !== "received").length === 0 ?
