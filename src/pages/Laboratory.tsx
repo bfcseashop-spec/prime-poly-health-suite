@@ -11,11 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { FlaskConical, Plus, Search, TestTube, ClipboardList, Beaker, FileText, Trash2, Upload, Printer, CheckCircle2, AlertCircle, Clock, Eye, Pencil, Barcode as BarcodeIcon, User } from "lucide-react";
+import { FlaskConical, Plus, Search, TestTube, ClipboardList, Beaker, FileText, Trash2, Upload, Printer, CheckCircle2, AlertCircle, Clock, Eye, Pencil, Barcode as BarcodeIcon, User, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { fmtUSD } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
 import Barcode from "react-barcode";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { printBarcodes } from "@/lib/dataIO";
 
 export type ReportParameter = { name: string; category: string; unit: string; reference_range: string; result_type: string };
 type Test = { id: string; code: string; name: string; category: string; sample_type: string | null; unit: string | null; reference_range: string | null; price_usd: number; turnaround_hours: number | null; active: boolean; description?: string | null; parameters?: ReportParameter[] | null };
@@ -64,6 +67,14 @@ export default function Laboratory() {
   const [newPriority, setNewPriority] = useState("normal");
   const [newNotes, setNewNotes] = useState("");
   const [newSelected, setNewSelected] = useState<Test[]>([]);
+
+  // Sample collection tab
+  const [sampleQ, setSampleQ] = useState("");
+  const [sampleStatus, setSampleStatus] = useState("all");
+  const [samplePage, setSamplePage] = useState(1);
+  const [samplePerPage, setSamplePerPage] = useState(10);
+  const [sampleSelected, setSampleSelected] = useState<Set<string>>(new Set());
+  const [sampleEdit, setSampleEdit] = useState<any | null>(null);
 
   // Param lookups
   type LookupKind = "unit" | "category" | "name" | "sample";
