@@ -1,0 +1,1 @@
+ALTER TABLE public.lab_tests ADD COLUMN IF NOT EXISTS parameters jsonb NOT NULL DEFAULT '[]'::jsonb;

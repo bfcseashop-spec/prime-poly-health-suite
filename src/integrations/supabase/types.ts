@@ -787,6 +787,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          parameters: Json
           price_usd: number
           reference_range: string | null
           sample_type: string | null
@@ -802,6 +803,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          parameters?: Json
           price_usd?: number
           reference_range?: string | null
           sample_type?: string | null
@@ -817,6 +819,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          parameters?: Json
           price_usd?: number
           reference_range?: string | null
           sample_type?: string | null
