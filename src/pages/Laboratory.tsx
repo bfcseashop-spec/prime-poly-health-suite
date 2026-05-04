@@ -645,7 +645,7 @@ export default function Laboratory() {
                       };
                       return (
                         <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-background p-2 rounded-md border">
-                          <Input className="md:col-span-3 h-9" placeholder="e.g. Hemoglobin" value={p.name} onChange={e => updateP({ name: e.target.value })} />
+                          <Input list="param-name-list" className="md:col-span-3 h-9" placeholder="e.g. Hemoglobin" value={p.name} onChange={e => updateP({ name: e.target.value })} />
                           <Input list="param-cat-list" className="md:col-span-2 h-9" placeholder="e.g. CBC" value={p.category} onChange={e => updateP({ category: e.target.value })} />
                           <Input list="param-unit-list" className="md:col-span-2 h-9" placeholder="g/dL" value={p.unit} onChange={e => updateP({ unit: e.target.value })} />
                           <Input className="md:col-span-3 h-9" placeholder="13-17" value={p.reference_range} onChange={e => updateP({ reference_range: e.target.value })} />
