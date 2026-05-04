@@ -483,6 +483,7 @@ export default function Laboratory() {
                               </SelectContent>
                             </Select>
                           </TableCell>
+                          <TableCell><StatusBadge s={o.status} /></TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
