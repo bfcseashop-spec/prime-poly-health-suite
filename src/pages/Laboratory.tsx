@@ -65,6 +65,35 @@ export default function Laboratory() {
   const [newNotes, setNewNotes] = useState("");
   const [newSelected, setNewSelected] = useState<Test[]>([]);
 
+  // Param lookups
+  const [paramUnits, setParamUnits] = useState<{id:string;name:string}[]>([]);
+  const [paramCats, setParamCats] = useState<{id:string;name:string}[]>([]);
+  const [lookupDlg, setLookupDlg] = useState<null | "unit" | "category">(null);
+  const [lookupName, setLookupName] = useState("");
+  const loadLookups = async () => {
+    const [u, c] = await Promise.all([
+      supabase.from("lab_param_units" as any).select("id,name").order("name"),
+      supabase.from("lab_param_categories" as any).select("id,name").order("name"),
+    ]);
+    setParamUnits((u.data as any) ?? []);
+    setParamCats((c.data as any) ?? []);
+  };
+  const addLookup = async () => {
+    const n = lookupName.trim();
+    if (!n) return toast.error("Name required");
+    const tbl = lookupDlg === "unit" ? "lab_param_units" : "lab_param_categories";
+    const { error } = await supabase.from(tbl as any).insert({ name: n });
+    if (error) return toast.error(error.message);
+    toast.success("Added");
+    setLookupName(""); setLookupDlg(null); loadLookups();
+  };
+  const removeLookup = async (kind: "unit"|"category", id: string) => {
+    const tbl = kind === "unit" ? "lab_param_units" : "lab_param_categories";
+    const { error } = await supabase.from(tbl as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    loadLookups();
+  };
+
   const loadTests = async () => {
     const { data } = await supabase.from("lab_tests" as any).select("*").order("name");
     setTests((data as any[]) ?? []);
@@ -92,7 +121,7 @@ export default function Laboratory() {
     setAllPatients((data as any[]) ?? []);
   };
 
-  useEffect(() => { loadTests(); loadOrders(); loadAllPatients(); }, []);
+  useEffect(() => { loadTests(); loadOrders(); loadAllPatients(); loadLookups(); }, []);
 
   // ---- Catalog ----
   const filteredTests = useMemo(() => tests.filter(t => {
@@ -275,7 +304,15 @@ export default function Laboratory() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2"><FlaskConical className="h-7 w-7 text-primary" />Laboratory</h1>
           <p className="text-muted-foreground mt-1 text-sm">Manage tests, orders, sample collection and results</p>
         </div>
-        <Button onClick={() => setNewDlg(true)}><Plus className="h-4 w-4 mr-2" />New Lab Order</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => { setLookupName(""); setLookupDlg("unit"); }}>
+            <Plus className="h-4 w-4 mr-1" />Add Unit
+          </Button>
+          <Button variant="outline" onClick={() => { setLookupName(""); setLookupDlg("category"); }}>
+            <Plus className="h-4 w-4 mr-1" />Add Category
+          </Button>
+          <Button onClick={() => setNewDlg(true)}><Plus className="h-4 w-4 mr-2" />New Lab Order</Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
@@ -596,8 +633,8 @@ export default function Laboratory() {
                       return (
                         <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-background p-2 rounded-md border">
                           <Input className="md:col-span-3 h-9" placeholder="e.g. Hemoglobin" value={p.name} onChange={e => updateP({ name: e.target.value })} />
-                          <Input className="md:col-span-2 h-9" placeholder="e.g. CBC" value={p.category} onChange={e => updateP({ category: e.target.value })} />
-                          <Input className="md:col-span-2 h-9" placeholder="g/dL" value={p.unit} onChange={e => updateP({ unit: e.target.value })} />
+                          <Input list="param-cat-list" className="md:col-span-2 h-9" placeholder="e.g. CBC" value={p.category} onChange={e => updateP({ category: e.target.value })} />
+                          <Input list="param-unit-list" className="md:col-span-2 h-9" placeholder="g/dL" value={p.unit} onChange={e => updateP({ unit: e.target.value })} />
                           <Input className="md:col-span-3 h-9" placeholder="13-17" value={p.reference_range} onChange={e => updateP({ reference_range: e.target.value })} />
                           <div className="md:col-span-2 flex gap-1">
                             <Select value={p.result_type || "Numeric"} onValueChange={v => updateP({ result_type: v })}>
@@ -747,6 +784,47 @@ export default function Laboratory() {
             <Button variant="outline" onClick={() => setOpenOrder(null)}>Close</Button>
             <Button onClick={saveResults}>Save Results</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Datalists for parameter row autocomplete */}
+      <datalist id="param-unit-list">
+        {paramUnits.map(u => <option key={u.id} value={u.name} />)}
+      </datalist>
+      <datalist id="param-cat-list">
+        {paramCats.map(c => <option key={c.id} value={c.name} />)}
+      </datalist>
+
+      {/* Add Unit / Category dialog */}
+      <Dialog open={!!lookupDlg} onOpenChange={o => !o && setLookupDlg(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{lookupDlg === "unit" ? "Manage Units" : "Manage Categories"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder={lookupDlg === "unit" ? "e.g. mg/dL" : "e.g. CBC"}
+                value={lookupName}
+                onChange={e => setLookupName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addLookup()}
+              />
+              <Button onClick={addLookup}><Plus className="h-4 w-4 mr-1" />Add</Button>
+            </div>
+            <div className="border rounded-md max-h-72 overflow-y-auto divide-y">
+              {(lookupDlg === "unit" ? paramUnits : paramCats).length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground">No items yet</div>
+              ) : (lookupDlg === "unit" ? paramUnits : paramCats).map(it => (
+                <div key={it.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span>{it.name}</span>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeLookup(lookupDlg!, it.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setLookupDlg(null)}>Done</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
