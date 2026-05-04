@@ -536,24 +536,82 @@ export default function Laboratory() {
 
       {/* Add/Edit Test */}
       <Dialog open={!!testDlg} onOpenChange={o => !o && setTestDlg(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{testDlg?.id ? "Edit Test" : "Add Lab Test"}</DialogTitle></DialogHeader>
           {testDlg && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Code</Label><Input value={testDlg.code ?? ""} onChange={e => setTestDlg({ ...testDlg, code: e.target.value })} /></div>
-              <div className="space-y-1 col-span-1"><Label className="text-xs">Category</Label>
-                <Select value={testDlg.category ?? "general"} onValueChange={v => setTestDlg({ ...testDlg, category: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{CATS.map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}</SelectContent>
-                </Select>
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Code</Label><Input value={testDlg.code ?? ""} onChange={e => setTestDlg({ ...testDlg, code: e.target.value })} /></div>
+                <div className="space-y-1 col-span-1"><Label className="text-xs">Category</Label>
+                  <Select value={testDlg.category ?? "general"} onValueChange={v => setTestDlg({ ...testDlg, category: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{CATS.map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1 col-span-2"><Label className="text-xs">Test Name *</Label><Input value={testDlg.name ?? ""} onChange={e => setTestDlg({ ...testDlg, name: e.target.value })} /></div>
+                <div className="space-y-1"><Label className="text-xs">Sample Type</Label><Input placeholder="Blood / Urine…" value={testDlg.sample_type ?? ""} onChange={e => setTestDlg({ ...testDlg, sample_type: e.target.value })} /></div>
+                <div className="space-y-1"><Label className="text-xs">Unit</Label><Input placeholder="mg/dL" value={testDlg.unit ?? ""} onChange={e => setTestDlg({ ...testDlg, unit: e.target.value })} /></div>
+                <div className="space-y-1 col-span-2"><Label className="text-xs">Reference Range</Label><Input placeholder="e.g. 70-100" value={testDlg.reference_range ?? ""} onChange={e => setTestDlg({ ...testDlg, reference_range: e.target.value })} /></div>
+                <div className="space-y-1"><Label className="text-xs">Price (USD)</Label><Input type="number" step="0.01" value={testDlg.price_usd ?? 0} onChange={e => setTestDlg({ ...testDlg, price_usd: Number(e.target.value) })} /></div>
+                <div className="space-y-1"><Label className="text-xs">Turnaround (hrs)</Label><Input type="number" value={testDlg.turnaround_hours ?? 24} onChange={e => setTestDlg({ ...testDlg, turnaround_hours: Number(e.target.value) })} /></div>
+                <div className="col-span-2 flex items-center gap-2"><Switch checked={testDlg.active ?? true} onCheckedChange={v => setTestDlg({ ...testDlg, active: v })} /><Label className="text-sm">Active</Label></div>
               </div>
-              <div className="space-y-1 col-span-2"><Label className="text-xs">Test Name *</Label><Input value={testDlg.name ?? ""} onChange={e => setTestDlg({ ...testDlg, name: e.target.value })} /></div>
-              <div className="space-y-1"><Label className="text-xs">Sample Type</Label><Input placeholder="Blood / Urine…" value={testDlg.sample_type ?? ""} onChange={e => setTestDlg({ ...testDlg, sample_type: e.target.value })} /></div>
-              <div className="space-y-1"><Label className="text-xs">Unit</Label><Input placeholder="mg/dL" value={testDlg.unit ?? ""} onChange={e => setTestDlg({ ...testDlg, unit: e.target.value })} /></div>
-              <div className="space-y-1 col-span-2"><Label className="text-xs">Reference Range</Label><Input placeholder="e.g. 70-100" value={testDlg.reference_range ?? ""} onChange={e => setTestDlg({ ...testDlg, reference_range: e.target.value })} /></div>
-              <div className="space-y-1"><Label className="text-xs">Price (USD)</Label><Input type="number" step="0.01" value={testDlg.price_usd ?? 0} onChange={e => setTestDlg({ ...testDlg, price_usd: Number(e.target.value) })} /></div>
-              <div className="space-y-1"><Label className="text-xs">Turnaround (hrs)</Label><Input type="number" value={testDlg.turnaround_hours ?? 24} onChange={e => setTestDlg({ ...testDlg, turnaround_hours: Number(e.target.value) })} /></div>
-              <div className="col-span-2 flex items-center gap-2"><Switch checked={testDlg.active ?? true} onCheckedChange={v => setTestDlg({ ...testDlg, active: v })} /><Label className="text-sm">Active</Label></div>
+
+              {/* Report Parameters */}
+              <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-sm flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Report Parameters</h3>
+                    <p className="text-xs text-muted-foreground">Add multiple parameters that appear on the test report</p>
+                  </div>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setTestDlg({ ...testDlg, parameters: [...(testDlg.parameters ?? []), emptyParam()] })}>
+                    <Plus className="h-4 w-4 mr-1" />Add Parameter
+                  </Button>
+                </div>
+
+                {(!testDlg.parameters || testDlg.parameters.length === 0) ? (
+                  <div className="text-center text-xs text-muted-foreground py-6 border border-dashed rounded">
+                    No parameters added yet. Click "Add Parameter" to start.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="hidden md:grid grid-cols-12 gap-2 px-2 text-[11px] font-medium text-muted-foreground uppercase">
+                      <div className="col-span-3">Parameter Name</div>
+                      <div className="col-span-2">Category</div>
+                      <div className="col-span-2">Unit</div>
+                      <div className="col-span-3">Normal / Reference Range</div>
+                      <div className="col-span-2">Result Type</div>
+                    </div>
+                    {testDlg.parameters.map((p, idx) => {
+                      const updateP = (patch: Partial<ReportParameter>) => {
+                        const arr = [...(testDlg.parameters ?? [])];
+                        arr[idx] = { ...arr[idx], ...patch };
+                        setTestDlg({ ...testDlg, parameters: arr });
+                      };
+                      const removeP = () => {
+                        const arr = [...(testDlg.parameters ?? [])];
+                        arr.splice(idx, 1);
+                        setTestDlg({ ...testDlg, parameters: arr });
+                      };
+                      return (
+                        <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-background p-2 rounded-md border">
+                          <Input className="md:col-span-3 h-9" placeholder="e.g. Hemoglobin" value={p.name} onChange={e => updateP({ name: e.target.value })} />
+                          <Input className="md:col-span-2 h-9" placeholder="e.g. CBC" value={p.category} onChange={e => updateP({ category: e.target.value })} />
+                          <Input className="md:col-span-2 h-9" placeholder="g/dL" value={p.unit} onChange={e => updateP({ unit: e.target.value })} />
+                          <Input className="md:col-span-3 h-9" placeholder="13-17" value={p.reference_range} onChange={e => updateP({ reference_range: e.target.value })} />
+                          <div className="md:col-span-2 flex gap-1">
+                            <Select value={p.result_type || "Numeric"} onValueChange={v => updateP({ result_type: v })}>
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>{RESULT_TYPES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                            </Select>
+                            <Button type="button" size="icon" variant="ghost" className="h-9 w-9 text-destructive shrink-0" onClick={removeP}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           <DialogFooter><Button variant="outline" onClick={() => setTestDlg(null)}>Cancel</Button><Button onClick={saveTest}>Save</Button></DialogFooter>
