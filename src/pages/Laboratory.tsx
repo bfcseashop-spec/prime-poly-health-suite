@@ -800,6 +800,9 @@ export default function Laboratory() {
       </Dialog>
 
       {/* Datalists for parameter row autocomplete */}
+      <datalist id="sample-type-list">
+        {sampleTypes.map(s => <option key={s.id} value={s.name} />)}
+      </datalist>
       <datalist id="param-unit-list">
         {paramUnits.map(u => <option key={u.id} value={u.name} />)}
       </datalist>
